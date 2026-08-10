@@ -13,8 +13,17 @@ namespace Digital.Net.Core.Services.Templating;
 /// </summary>
 public static partial class TemplateInterpolator
 {
-    [GeneratedRegex(@"\{\{\s*([a-z][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")]
+    /// <summary>
+    ///     A token is a chain of one or more <c>source.field</c> terms separated by <c>??</c>. The capture
+    ///     holds the whole chain; <see cref="ResolveToken" /> walks its terms.
+    /// </summary>
+    [GeneratedRegex(
+        @"\{\{\s*([a-z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*(?:\s*\?\?\s*[a-z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}"
+    )]
     private static partial Regex TokenRegex();
+
+    /// <summary>Separates the terms of a fallback chain, e.g. <c>{{ article.metatitle ?? article.title }}</c>.</summary>
+    public const string FallbackSeparator = "??";
 
     private static readonly ConcurrentDictionary<Type, IReadOnlyList<TemplateVariableDescriptor>> SourceVariables = new();
     private static readonly ConcurrentDictionary<Type, IReadOnlyDictionary<string, PropertyInfo>> SourceFields = new();
@@ -54,19 +63,32 @@ public static partial class TemplateInterpolator
         }
     }
 
+    /// <summary>
+    ///     Walks the terms left to right and returns the first that holds a value. A term whose source or
+    ///     field is unknown is skipped, not fatal — but a chain naming no known field at all is left
+    ///     verbatim, so a typo stays visible on the page instead of silently rendering nothing.
+    /// </summary>
     private static string ResolveToken(Match match, IReadOnlyDictionary<string, object> sources)
     {
-        var sourceKey = match.Groups[1].Value;
-        var fieldName = match.Groups[2].Value;
+        var namedAKnownField = false;
 
-        if (!sources.TryGetValue(sourceKey, out var sourceInstance))
-            return match.Value;
+        foreach (var term in match.Groups[1].Value.Split(FallbackSeparator, StringSplitOptions.TrimEntries))
+        {
+            var separator = term.IndexOf('.');
+            if (!sources.TryGetValue(term[..separator], out var sourceInstance))
+                continue;
 
-        var fields = GetSourceFields(sourceInstance.GetType());
-        if (!fields.TryGetValue(fieldName.ToLowerInvariant(), out var property))
-            return match.Value;
+            var fields = GetSourceFields(sourceInstance.GetType());
+            if (!fields.TryGetValue(term[(separator + 1)..].ToLowerInvariant(), out var property))
+                continue;
 
-        return property.GetValue(sourceInstance)?.ToString() ?? string.Empty;
+            namedAKnownField = true;
+            var value = property.GetValue(sourceInstance)?.ToString();
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return namedAKnownField ? string.Empty : match.Value;
     }
 
     private static IReadOnlyList<TemplateVariableDescriptor> BuildVariables(Type sourceType)

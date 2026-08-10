@@ -112,6 +112,63 @@ public class TemplateInterpolatorTest : UnitTest
     }
 
     [Test]
+    public async Task Interpolate_Fallback_UsesTheFirstTermThatHoldsAValue()
+    {
+        var sources = Sources(new TestSource { Title = "Hello", Description = "World" });
+        var result = TemplateInterpolator.Interpolate("{{ testsource.title ?? testsource.description }}", sources);
+        await Assert.That(result).IsEqualTo("Hello");
+    }
+
+    [Test]
+    [Arguments(null)]
+    [Arguments("")]
+    [Arguments("   ")]
+    public async Task Interpolate_Fallback_SkipsNullAndBlankTerms(string? empty)
+    {
+        var sources = Sources(new TestSource { Title = empty, Description = "World" });
+        var result = TemplateInterpolator.Interpolate("{{ testsource.title ?? testsource.description }}", sources);
+        await Assert.That(result).IsEqualTo("World");
+    }
+
+    [Test]
+    public async Task Interpolate_Fallback_WalksMoreThanTwoTerms()
+    {
+        var sources = Sources(new TestSource { Title = null, Description = null, Hidden = "Z" });
+        var result = TemplateInterpolator.Interpolate(
+            "{{ testsource.title ?? testsource.description ?? testsource.title }}", sources);
+        await Assert.That(result).IsEqualTo(string.Empty);
+    }
+
+    [Test]
+    public async Task Interpolate_Fallback_SkipsUnknownTerms_AndKeepsGoing()
+    {
+        var sources = Sources(new TestSource { Title = "Hello", Description = "World" });
+        // testsource.hidden is not a source field, unknown.field has no source at all.
+        var result = TemplateInterpolator.Interpolate(
+            "{{ unknown.field ?? testsource.hidden ?? testsource.description }}", sources);
+        await Assert.That(result).IsEqualTo("World");
+    }
+
+    [Test]
+    public async Task Interpolate_Fallback_LeavesTokenVerbatim_WhenNoTermIsKnown()
+    {
+        var sources = Sources(new TestSource { Title = "X", Description = "Y", Hidden = "Z" });
+        const string template = "{{ testsource.hidden ?? unknown.field }}";
+        var result = TemplateInterpolator.Interpolate(template, sources);
+        await Assert.That(result).IsEqualTo(template);
+    }
+
+    [Test]
+    public async Task Interpolate_ToleratesWhitespaceAroundTheFallbackOperator()
+    {
+        var sources = Sources(new TestSource { Title = null, Description = "World" });
+        var tight = TemplateInterpolator.Interpolate("{{testsource.title??testsource.description}}", sources);
+        var loose = TemplateInterpolator.Interpolate("{{  testsource.title   ??   testsource.description  }}", sources);
+        await Assert.That(tight).IsEqualTo("World");
+        await Assert.That(loose).IsEqualTo("World");
+    }
+
+    [Test]
     public async Task GetVariables_ReturnsOnlySourceProperties()
     {
         var variables = TemplateInterpolator.GetVariables<TestSource>();
