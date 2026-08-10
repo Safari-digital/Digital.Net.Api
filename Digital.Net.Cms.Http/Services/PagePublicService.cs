@@ -48,6 +48,62 @@ public class PagePublicService(
         return result;
     }
 
+    /// <summary>
+    ///     Builds every sheet of a page in one pass: inheritance applied, published only, ordered as the
+    ///     pivot declares, and hydrated from the same source as the page itself. A page whose source is
+    ///     unresolved renders its sheets un-hydrated rather than failing, exactly as its metas do.
+    /// </summary>
+    public async Task<Result<List<PageSheetResourceDto>>> BuildPublicPageSheets(
+        PageBuildPayload payload,
+        CancellationToken ct = default
+    )
+    {
+        var result = new Result<List<PageSheetResourceDto>>();
+        try
+        {
+            var (page, template, sources) = await ResolvePageAndSourcesAsync(payload, ct);
+            var pageIds = template is null ? new[] { page.Id } : [page.Id, template.Id];
+
+            var pageSheets = await context.PageSheets
+                .AsNoTracking()
+                .Include(ps => ps.Child)
+                .Where(ps => pageIds.Contains(ps.ParentId) && ps.Child.Published)
+                .ToListAsync(ct);
+
+            // Inherited sheets load first, then the page's own — same order as GetPageSheetInfos. A sheet
+            // shared by both pages is kept once, on the dedicated page's side.
+            var ownIds = pageSheets.Where(ps => ps.ParentId == page.Id).Select(ps => ps.ChildId).ToHashSet();
+            var ordered = pageSheets
+                .Where(ps => ps.ParentId != page.Id && !ownIds.Contains(ps.ChildId))
+                .OrderBy(ps => ps.Order)
+                .Concat(pageSheets.Where(ps => ps.ParentId == page.Id).OrderBy(ps => ps.Order))
+                .ToList();
+
+            result.Value = ordered
+                .Select(ps =>
+                {
+                    var sheet = ps.Child;
+                    if (sources is not null)
+                        TemplateInterpolator.HydrateInPlace(sheet, sources);
+
+                    return new PageSheetResourceDto
+                    {
+                        Id = sheet.Id,
+                        Name = sheet.Name,
+                        Type = sheet.Type,
+                        Content = sheet.Content
+                    };
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            result.AddError(ex);
+        }
+
+        return result;
+    }
+
     public async Task<Result<PagePublicDto>> BuildPublicPage(PageBuildPayload payload, CancellationToken ct = default)
     {
         var result = new Result<PagePublicDto>();

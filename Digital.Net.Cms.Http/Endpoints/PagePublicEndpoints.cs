@@ -33,11 +33,19 @@ public static class PagePublicEndpoints
             );
 
         publicController
+            .MapPost("build/sheets", BuildPublicPageSheets)
+            .WithSummary("BuildSheets")
+            .WithDescription(
+                "Builds every published sheet of the page declared by the client, inheritance applied and " +
+                "content interpolated, ordered by load order. One round-trip instead of one per sheet."
+            );
+
+        publicController
             .MapPost("build/sheet", BuildPublicPageSheet)
             .WithSummary("BuildSheet")
             .WithDescription(
                 "Builds the published sheet identified by SheetId for the page declared by the client, " +
-                "interpolating Sheet.Content with the entity instance identified by (PageType, PageSlug). " +
+                "interpolating Sheet.Content with the source instance identified by PageSlug. " +
                 "Returns the raw content with its matching Content-Type."
             );
 
@@ -62,6 +70,27 @@ public static class PagePublicEndpoints
         )
     {
         var result = await pagePublicService.BuildPublicPage(payload, ct);
+        if (result.HasErrorOfType<InvalidPagePathException>())
+            return TypedResults.BadRequest(result);
+        if (result.HasError)
+            return TypedResults.InternalServerError(result);
+
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Results<
+            Ok<Result<List<PageSheetResourceDto>>>,
+            BadRequest<Result<List<PageSheetResourceDto>>>,
+            InternalServerError<Result<List<PageSheetResourceDto>>>
+        >>
+        BuildPublicPageSheets(
+            [FromBody]
+            PageBuildPayload payload,
+            PagePublicService pagePublicService,
+            CancellationToken ct
+        )
+    {
+        var result = await pagePublicService.BuildPublicPageSheets(payload, ct);
         if (result.HasErrorOfType<InvalidPagePathException>())
             return TypedResults.BadRequest(result);
         if (result.HasError)

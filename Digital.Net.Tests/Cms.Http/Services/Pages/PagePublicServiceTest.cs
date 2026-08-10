@@ -360,6 +360,82 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
     private static PageSheetBuildPayload BuildSheet(Guid sheetId, string path, string? slug = null) =>
         new() { SheetId = sheetId, Path = path, PageSlug = slug };
 
+    [Test]
+    public async Task BuildPageSheets_ReturnsInheritedThenOwn_WithoutDuplicates()
+    {
+        var (template, dedicated) = SeedTemplateAndDedicatedPage();
+        var inherited = _context.BuildTestSheet(type: "css", content: "/* inherited */", published: true);
+        var own = _context.BuildTestSheet(type: "js", content: "/* own */", published: true);
+        _context.BuildTestPageSheet(template.Id, inherited.Id);
+        _context.BuildTestPageSheet(dedicated.Id, own.Id);
+        // The same sheet hangs off both pages: it must surface once.
+        _context.BuildTestPageSheet(dedicated.Id, inherited.Id, loadOrder: 1);
+
+        var result = await _service.BuildPublicPageSheets(Build(dedicated.Path));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Count).IsEqualTo(2);
+        await Assert.That(result.Value!.Count(s => s.Id == inherited.Id)).IsEqualTo(1);
+        await Assert.That(result.Value!.Select(s => s.Id)).IsEquivalentTo(new[] { own.Id, inherited.Id });
+    }
+
+    [Test]
+    public async Task BuildPageSheets_HydratesContent_FromMatchingArticle()
+    {
+        var (pattern, slug) = SeedArticleAndTemplatedPage();
+        var page = _context.Pages.Single(p => p.Path == pattern);
+        var sheet = _context.BuildTestSheet(
+            type: "html",
+            content: "<h1>{{ article.title }}</h1>",
+            published: true
+        );
+        _context.BuildTestPageSheet(page.Id, sheet.Id);
+
+        var result = await _service.BuildPublicPageSheets(Build(pattern, slug));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Single().Content).IsEqualTo("<h1>Hello World</h1>");
+    }
+
+    [Test]
+    public async Task BuildPageSheets_LeavesPlaceholders_WhenPayloadMissesSlug()
+    {
+        var (pattern, _) = SeedArticleAndTemplatedPage();
+        var page = _context.Pages.Single(p => p.Path == pattern);
+        var sheet = _context.BuildTestSheet(
+            type: "html",
+            content: "<h1>{{ article.title }}</h1>",
+            published: true
+        );
+        _context.BuildTestPageSheet(page.Id, sheet.Id);
+
+        var result = await _service.BuildPublicPageSheets(Build(pattern));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Single().Content).IsEqualTo("<h1>{{ article.title }}</h1>");
+    }
+
+    [Test]
+    public async Task BuildPageSheets_ExcludesUnpublishedSheets()
+    {
+        var (page, published) = SeedPageWithSheet(sheetContent: "/* published */");
+        var draft = _context.BuildTestSheet(type: "css", content: "/* draft */", published: false);
+        _context.BuildTestPageSheet(page.Id, draft.Id, loadOrder: 1);
+
+        var result = await _service.BuildPublicPageSheets(Build(page.Path));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Select(s => s.Id)).IsEquivalentTo(new[] { published.Id });
+    }
+
+    [Test]
+    public async Task BuildPageSheets_ReturnsInvalidPagePath_WhenPathIsUnknown()
+    {
+        var result = await _service.BuildPublicPageSheets(Build("/nope-" + Guid.NewGuid().ToString("N")[..8]));
+
+        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
+    }
+
     private (Page page, Sheet sheet) SeedPageWithSheet(
         string sheetType = "css",
         string sheetContent = "body { color: red; }",
