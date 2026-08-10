@@ -14,14 +14,14 @@ public class Article : Entity
 {
     [Column("Title")]
     [Required]
-    [Templatable]
+    [TemplateSource]
     [MaxLength(256)]
     [Sortable]
     public required string Title { get; set; }
 
     [Column("Description")]
     [Required]
-    [Templatable]
+    [TemplateSource]
     [MaxLength(512)]
     public required string Description { get; set; }
 
@@ -31,7 +31,7 @@ public class Article : Entity
 
     [Column("Slug")]
     [Required]
-    [Templatable]
+    [TemplateSource]
     [MaxLength(256)]
     [Sortable]
     [RegexValidation(RegularExpressions.ArticleSlugPattern)]
@@ -45,7 +45,11 @@ public class Article : Entity
     [ForeignKey("Page")]
     public Guid? PageId { get; set; }
 
+    // Discriminator and PublishedFlag are transitional: N articles still share one template page, so the
+    // slug tells them apart and PublishedAt gates publication. Both drop once every article owns a
+    // dedicated page carrying its own Published state — resolution then reduces to the foreign key.
     [ReadOnly]
+    [TemplateHost(Discriminator = nameof(Slug), PublishedFlag = nameof(PublishedAt))]
     public virtual Page? Page { get; set; }
 
     public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();

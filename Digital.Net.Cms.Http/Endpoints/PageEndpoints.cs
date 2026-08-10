@@ -4,8 +4,8 @@ using Digital.Net.Cms.Context;
 using Digital.Net.Cms.Http.Dto;
 using Digital.Net.Cms.Http.Services;
 using Digital.Net.Cms.Models;
-using Digital.Net.Cms.Models.Articles;
 using Digital.Net.Cms.Models.Pages;
+using Digital.Net.Cms.Templating;
 using Digital.Net.Core.Http.Security;
 using Digital.Net.Core.Http.Services.Authentication.Filters;
 using Digital.Net.Core.Http.Services.Crud;
@@ -58,11 +58,11 @@ public static class PageEndpoints
             .WithDescription("Returns the list of valid OpenGraph property keys.");
 
         controller
-            .MapGet("template-variables/{entityType}", GetTemplateVariables)
+            .MapGet("template-variables", GetTemplateVariables)
             .WithSummary("GetTemplateVariables")
             .WithDescription(
-                "Lists template placeholders ({{ source.field }}) available for the given PageEntityType. " +
-                "Returns an empty list if the entity type does not expose any [Templatable] field."
+                "Lists template placeholders ({{ source.field }}) exposed by every declared source. " +
+                "Returns an empty list when no source exposes a [TemplateSource] field."
             );
 
         controller.MapCrudGet<CmsContext, Page, PageDto>();
@@ -109,7 +109,6 @@ public static class PageEndpoints
             {
                 Id = template.Id,
                 Path = template.Path,
-                EntityType = template.EntityType,
                 Published = template.Published,
                 Indexed = template.Indexed,
                 Title = template.Title,
@@ -202,13 +201,14 @@ public static class PageEndpoints
         TypedResults.Ok(new Result<IReadOnlyList<OpenGraphPropertySchema>>(OpenGraphProperties.Schema));
 
     private static Ok<Result<IReadOnlyList<TemplateVariableDescriptor>>> GetTemplateVariables(
-        PageEntityType entityType
+        [FromServices]
+        IEnumerable<TemplateSourceDescriptor> sources
     )
     {
-        var sourceType = entityType switch { PageEntityType.Article => typeof(Article), _ => null };
-        var variables = sourceType is null
-            ? Array.Empty<TemplateVariableDescriptor>()
-            : TemplateInterpolator.GetVariables(sourceType);
+        // Derived from the attributes by reflection, so frozen for the lifetime of the process.
+        IReadOnlyList<TemplateVariableDescriptor> variables = sources
+            .SelectMany(source => TemplateInterpolator.GetVariables(source.SourceType))
+            .ToList();
 
         return TypedResults.Ok(new Result<IReadOnlyList<TemplateVariableDescriptor>>(variables));
     }
@@ -224,8 +224,6 @@ public static class PageEndpoints
             predicate = predicate.Add(x => x.Published == query.Published);
         if (query.Indexed.HasValue)
             predicate = predicate.Add(x => x.Indexed == query.Indexed);
-        if (query.EntityType.HasValue)
-            predicate = predicate.Add(x => x.EntityType == query.EntityType);
         return predicate;
     }
 }

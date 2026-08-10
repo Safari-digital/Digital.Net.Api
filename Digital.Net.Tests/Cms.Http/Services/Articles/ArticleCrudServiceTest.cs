@@ -40,7 +40,7 @@ public class ArticleCrudServiceTest : UnitTest, IAsyncInitializer
     [Test]
     public async Task PatchArticle_ShouldUpdatePageId()
     {
-        var page = _context.BuildTestPage(entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage();
         var article = _context.BuildTestArticle();
         var patch = BuildPatch(new { op = "replace", path = "/PageId", value = page.Id });
 
@@ -128,7 +128,7 @@ public class ArticleCrudServiceTest : UnitTest, IAsyncInitializer
     [Test]
     public async Task PatchArticle_ShouldOrchestratePageIdAndTags_InSameTransaction()
     {
-        var page = _context.BuildTestPage(entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage();
         var tag = _context.BuildTestTag("mix-" + Guid.NewGuid().ToString("N")[..6]);
         var article = _context.BuildTestArticle();
         var patch = BuildPatch(
@@ -208,7 +208,7 @@ public class ArticleCrudServiceTest : UnitTest, IAsyncInitializer
     [Test]
     public async Task DeletePage_ShouldSetArticlePageIdToNull()
     {
-        var page = _context.BuildTestPage(entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage();
         var article = _context.BuildTestArticle(pageId: page.Id);
 
         _context.Pages.Remove(page);

@@ -42,7 +42,7 @@ public class MutationParentTouchTest : UnitTest, IAsyncInitializer
         >(_context);
         var dispatcher = new PatchDispatcher<Page>([openGraphResolver]);
         var crudService = new CrudService<CmsContext, Page>(_context, dispatcher);
-        _service = new PageCrudService(crudService, _context);
+        _service = new PageCrudService(crudService);
     }
 
     [Test]

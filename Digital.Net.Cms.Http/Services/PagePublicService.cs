@@ -3,6 +3,7 @@ using Digital.Net.Cms.Http.Dto;
 using Digital.Net.Cms.Http.Exceptions;
 using Digital.Net.Cms.Models;
 using Digital.Net.Cms.Models.Pages;
+using Digital.Net.Cms.Templating;
 using Digital.Net.Lib.Entities.Models;
 using Digital.Net.Core.Services.Templating;
 using Digital.Net.Lib.Exceptions.types;
@@ -13,7 +14,8 @@ namespace Digital.Net.Cms.Http.Services;
 
 public class PagePublicService(
     CmsContext context,
-    PageTemplateResolver templateResolver
+    PageTemplateResolver templateResolver,
+    IEnumerable<ITemplateSourceResolver> sourceResolvers
 )
 {
     public async Task<Result<List<PageSheetInfoDto>>> GetPageSheetInfos(Guid id)
@@ -149,15 +151,13 @@ public class PagePublicService(
         if (dedicated is null)
             template = null;
 
-        var entityType = page.EntityType ?? template?.EntityType;
-        if (payload.PageType != entityType)
-            throw new InvalidPageTypeException();
-
         IReadOnlyDictionary<string, object>? sources = null;
-        if (entityType is not null && !string.IsNullOrEmpty(payload.PageSlug))
+        if (!string.IsNullOrEmpty(payload.PageSlug))
         {
-            var owner = page.EntityType is not null ? page : template!;
-            var source = await ResolveSourceAsync(owner, entityType.Value, payload.PageSlug, ct);
+            // Sources hang off whichever page declares the pattern: the dedicated page itself, or the
+            // template it inherits from when the dedicated page is a static child.
+            var owners = template is null ? new[] { page.Id } : [page.Id, template.Id];
+            var source = await ResolveSourceAsync(owners, payload.PageSlug, ct);
             // A static dedicated page stands on its own: a missing interpolation source only
             // 404s when a template answers (unknown article slugs must keep returning 404).
             var servesDedicatedPage = dedicated is not null && !PagePathAnalyzer.HasDynamicSlug(dedicated.Path);
@@ -211,20 +211,23 @@ public class PagePublicService(
             .Select(po => po.Child)
             .ToListAsync(ct);
 
+    /// <summary>
+    ///     Queries the declared sources until one answers for the owning pages. As many round-trips as
+    ///     declared sources, which is without stake at this scale.
+    /// </summary>
     private async Task<Entity?> ResolveSourceAsync(
-        Page owner,
-        PageEntityType entityType,
+        IReadOnlyList<Guid> owners,
         string slug,
         CancellationToken ct = default
-    ) => entityType switch
+    )
     {
-        PageEntityType.Article => await context.Articles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                a => a.Slug == slug
-                     && a.PublishedAt != null
-                     && a.PageId == owner.Id,
-                ct),
-        _ => null
-    };
+        foreach (var resolver in sourceResolvers)
+        {
+            var source = await resolver.ResolveAsync(owners, slug, ct);
+            if (source is not null)
+                return source;
+        }
+
+        return null;
+    }
 }

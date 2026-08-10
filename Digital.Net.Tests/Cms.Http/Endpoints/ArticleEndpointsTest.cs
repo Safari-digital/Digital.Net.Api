@@ -65,8 +65,8 @@ public class ArticleEndpointsTest
     {
         var client = await CreateAuthenticatedClientAsync();
         var ctx = ApplicationFixture.GetCmsContext();
-        var pageA = ctx.BuildTestPage(entityType: PageEntityType.Article);
-        var pageB = ctx.BuildTestPage(entityType: PageEntityType.Article);
+        var pageA = ctx.BuildTestPage();
+        var pageB = ctx.BuildTestPage();
         var matched = ctx.BuildTestArticle(pageId: pageA.Id);
         ctx.BuildTestArticle(pageId: pageB.Id);
 
@@ -83,7 +83,7 @@ public class ArticleEndpointsTest
     {
         var client = await CreateAuthenticatedClientAsync();
         var ctx = ApplicationFixture.GetCmsContext();
-        var page = ctx.BuildTestPage(entityType: PageEntityType.Article);
+        var page = ctx.BuildTestPage();
         var article = ctx.BuildTestArticle(pageId: page.Id);
 
         var response = await client.GetArticleById(article.Id);

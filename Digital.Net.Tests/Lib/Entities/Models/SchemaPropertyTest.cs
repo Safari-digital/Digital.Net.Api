@@ -18,8 +18,11 @@ public class SchemaPropertyTest : UnitTest
 
     private class TestEntity : Entity
     {
-        [Column("required_property"), Templatable, Required, ReadOnly]
+        [Column("required_property"), TemplateTarget, Required, ReadOnly]
         public string RequiredProperty { get; set; }
+
+        [TemplateSource]
+        public string SourceProperty { get; set; }
 
         [RegexValidation(@"^[a-z]+$")]
         public string RegexProperty { get; set; }
@@ -54,7 +57,8 @@ public class SchemaPropertyTest : UnitTest
         await Assert.That(schemaProperty.Name).IsEqualTo("RequiredProperty");
         await Assert.That(schemaProperty.Path).IsEqualTo("required_property");
         await Assert.That(schemaProperty.Type).IsEqualTo(propertyInfo!.PropertyType.Name);
-        await Assert.That(schemaProperty.IsTemplatable).IsTrue();
+        await Assert.That(schemaProperty.IsTemplateTarget).IsTrue();
+        await Assert.That(schemaProperty.IsTemplateSource).IsFalse();
         await Assert.That(schemaProperty.RegexValidation).IsNull();
         await Assert.That(schemaProperty.IsRequired).IsTrue();
         await Assert.That(schemaProperty.IsReadOnly).IsTrue();
@@ -67,10 +71,19 @@ public class SchemaPropertyTest : UnitTest
     }
 
     [Test]
-    public async Task SchemaProperty_IsTemplatable_IsFalse_ForUnflaggedProperty()
+    public async Task SchemaProperty_TemplateRoles_AreFalse_ForUnflaggedProperty()
     {
         var schema = SchemaFor("RegexProperty");
-        await Assert.That(schema.IsTemplatable).IsFalse();
+        await Assert.That(schema.IsTemplateTarget).IsFalse();
+        await Assert.That(schema.IsTemplateSource).IsFalse();
+    }
+
+    [Test]
+    public async Task SchemaProperty_IsTemplateSource_IsTrue_ForSourceProperty()
+    {
+        var schema = SchemaFor("SourceProperty");
+        await Assert.That(schema.IsTemplateSource).IsTrue();
+        await Assert.That(schema.IsTemplateTarget).IsFalse();
     }
 
     [Test]

@@ -8,17 +8,23 @@ public class TemplateInterpolatorTest : UnitTest
 {
     private class TestSource : Entity
     {
-        [Templatable] public string? Title { get; set; }
-        [Templatable] public string? Description { get; set; }
+        [TemplateSource] public string? Title { get; set; }
+        [TemplateSource] public string? Description { get; set; }
         public string? Hidden { get; set; }
+
+        // Carries the opposite role: must never be exposed as a variable.
+        [TemplateTarget] public string? TargetOnly { get; set; }
     }
 
     private class TestTarget
     {
-        [Templatable] public string? Headline { get; set; }
-        [Templatable] public string? Body { get; set; }
+        [TemplateTarget] public string? Headline { get; set; }
+        [TemplateTarget] public string? Body { get; set; }
         public string? Untouched { get; set; }
-        [Templatable] public int IgnoredNonString { get; set; }
+        [TemplateTarget] public int IgnoredNonString { get; set; }
+
+        // Carries the opposite role: must never be hydrated.
+        [TemplateSource] public string? SourceOnly { get; set; }
     }
 
     private static IReadOnlyDictionary<string, object> Sources(TestSource source) =>
@@ -106,17 +112,35 @@ public class TemplateInterpolatorTest : UnitTest
     }
 
     [Test]
-    public async Task GetVariables_ReturnsOnlyTemplatableProperties()
+    public async Task GetVariables_ReturnsOnlySourceProperties()
     {
         var variables = TemplateInterpolator.GetVariables<TestSource>();
         await Assert.That(variables.Count).IsEqualTo(2);
         await Assert.That(variables.Any(v => v.Field == "Title" && v.Token == "{{ testsource.title }}")).IsTrue();
         await Assert.That(variables.Any(v => v.Field == "Description")).IsTrue();
         await Assert.That(variables.Any(v => v.Field == "Hidden")).IsFalse();
+        await Assert.That(variables.Any(v => v.Field == "TargetOnly")).IsFalse();
     }
 
     [Test]
-    public async Task HydrateInPlace_RewritesAllTemplatableStrings()
+    public async Task Interpolate_LeavesTargetOnlyFieldUntouched()
+    {
+        var sources = Sources(new TestSource { Title = "X", Description = "Y", TargetOnly = "Z" });
+        var result = TemplateInterpolator.Interpolate("{{ testsource.targetonly }}", sources);
+        await Assert.That(result).IsEqualTo("{{ testsource.targetonly }}");
+    }
+
+    [Test]
+    public async Task HydrateInPlace_LeavesSourceOnlyPropertyUntouched()
+    {
+        var sources = Sources(new TestSource { Title = "Foo", Description = "Bar" });
+        var target = new TestTarget { SourceOnly = "{{ testsource.title }}" };
+        TemplateInterpolator.HydrateInPlace(target, sources);
+        await Assert.That(target.SourceOnly).IsEqualTo("{{ testsource.title }}");
+    }
+
+    [Test]
+    public async Task HydrateInPlace_RewritesAllTargetStrings()
     {
         var sources = Sources(new TestSource { Title = "Foo", Description = "Bar" });
         var target = new TestTarget

@@ -7,8 +7,9 @@ using Digital.Net.Lib.Entities.Models;
 namespace Digital.Net.Core.Services.Templating;
 
 /// <summary>
-///     Hydrates string templates of the form <c>{{ source.field }}</c> using
-///     entities marked with <see cref="TemplatableAttribute" />.
+///     Hydrates string templates of the form <c>{{ source.field }}</c>. Fields marked with
+///     <see cref="TemplateSourceAttribute" /> feed the tokens; fields marked with
+///     <see cref="TemplateTargetAttribute" /> hold the templates being rewritten.
 /// </summary>
 public static partial class TemplateInterpolator
 {
@@ -38,7 +39,7 @@ public static partial class TemplateInterpolator
             : TokenRegex().Replace(template, match => ResolveToken(match, sources));
 
     /// <summary>
-    ///     Walks all <see cref="TemplatableAttribute" /> string properties of <paramref name="target" />
+    ///     Walks all <see cref="TemplateTargetAttribute" /> string properties of <paramref name="target" />
     ///     and rewrites their values in place.
     /// </summary>
     public static void HydrateInPlace<TTarget>(TTarget target, IReadOnlyDictionary<string, object> sources)
@@ -72,7 +73,7 @@ public static partial class TemplateInterpolator
     {
         var sourceKey = sourceType.Name.ToLowerInvariant();
         return sourceType.GetProperties()
-            .Where(IsTemplatableString)
+            .Where(IsSourceString)
             .Select(p => new TemplateVariableDescriptor(
                 $"{{{{ {sourceKey}.{p.Name.ToLowerInvariant()} }}}}",
                 sourceType.Name,
@@ -85,15 +86,21 @@ public static partial class TemplateInterpolator
 
     private static IReadOnlyDictionary<string, PropertyInfo> BuildSourceFields(Type sourceType) =>
         sourceType.GetProperties()
-            .Where(IsTemplatableString)
+            .Where(IsSourceString)
             .ToDictionary(p => p.Name.ToLowerInvariant(), p => p);
 
+    // Keyed on the runtime type, so an EF proxy gets its own entry. Proxies inherit the attributes of
+    // the entity they derive from, so both entries resolve to the same set of properties.
     private static IReadOnlyList<PropertyInfo> GetTargetProperties(Type targetType) =>
         TargetProperties.GetOrAdd(targetType, t => t.GetProperties()
-            .Where(p => p.CanWrite && IsTemplatableString(p))
+            .Where(p => p.CanWrite && IsTargetString(p))
             .ToList());
 
-    private static bool IsTemplatableString(PropertyInfo property) =>
+    private static bool IsSourceString(PropertyInfo property) =>
         property.PropertyType == typeof(string)
-        && property.GetCustomAttribute<TemplatableAttribute>() is not null;
+        && property.GetCustomAttribute<TemplateSourceAttribute>() is not null;
+
+    private static bool IsTargetString(PropertyInfo property) =>
+        property.PropertyType == typeof(string)
+        && property.GetCustomAttribute<TemplateTargetAttribute>() is not null;
 }

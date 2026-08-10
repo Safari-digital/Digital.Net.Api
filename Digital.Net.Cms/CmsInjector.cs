@@ -1,5 +1,6 @@
 using Digital.Net.Cms.Context;
 using Digital.Net.Cms.Services;
+using Digital.Net.Cms.Templating;
 using Digital.Net.Core;
 using Digital.Net.Lib.Configuration;
 using Digital.Net.Lib.Entities.Bootstrap;
@@ -19,6 +20,10 @@ public static class CmsInjector
     {
         builder.AddDatabaseContext<CmsContext>(
             builder.Configuration.GetOrThrow<string>(CoreSettings.ConnectionStringKey));
+
+        // Article still lives in CmsContext, so the CMS declares its own sources. A client app declares
+        // its context the same way — the mechanism does not change when Article moves out.
+        builder.AddTemplateSources<CmsContext>();
 
         builder.Services
             .AddScoped<MediaService>();
