@@ -28,8 +28,8 @@ public static class PagePublicEndpoints
             .WithSummary("Build")
             .WithDescription(
                 "Builds a published page response for the templated Path declared by the client, " +
-                "interpolating [Templatable] fields with the entity instance identified by " +
-                "(PageType, PageSlug). For static pages, omit PageType/PageSlug."
+                "interpolating [TemplateTarget] fields with the source instance identified by PageSlug. " +
+                "For static pages, omit PageSlug."
             );
 
         publicController
@@ -62,7 +62,7 @@ public static class PagePublicEndpoints
         )
     {
         var result = await pagePublicService.BuildPublicPage(payload, ct);
-        if (result.HasErrorOfType<InvalidPagePathException>() || result.HasErrorOfType<InvalidPageTypeException>())
+        if (result.HasErrorOfType<InvalidPagePathException>())
             return TypedResults.BadRequest(result);
         if (result.HasError)
             return TypedResults.InternalServerError(result);
@@ -83,7 +83,7 @@ public static class PagePublicEndpoints
         )
     {
         var result = await pagePublicService.BuildPublicPageSheetResource(payload, ct);
-        if (result.HasErrorOfType<InvalidPagePathException>() || result.HasErrorOfType<InvalidPageTypeException>())
+        if (result.HasErrorOfType<InvalidPagePathException>())
             return TypedResults.BadRequest(result);
         if (result.HasError)
             return TypedResults.InternalServerError(result);

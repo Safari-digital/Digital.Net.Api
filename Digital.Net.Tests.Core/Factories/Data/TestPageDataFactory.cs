@@ -10,16 +10,14 @@ public static class TestPageFactory
         this CmsContext context,
         string? path = null,
         bool published = false,
-        bool? indexed = true,
-        PageEntityType? entityType = null
+        bool? indexed = true
     )
     {
         var page = new Page
         {
             Path = path ?? $"/{Randomizer.GenerateRandomString(Randomizer.AnyLetterOrNumber, 10)}",
             Published = published,
-            Indexed = indexed!.Value,
-            EntityType = entityType
+            Indexed = indexed!.Value
         };
         context.Pages.Add(page);
         context.SaveChanges();

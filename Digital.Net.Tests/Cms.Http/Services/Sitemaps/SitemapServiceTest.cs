@@ -21,7 +21,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     {
         await DbFixture.EnsureCreatedAsync<CmsContext>();
         _context = DbFixture.CreateContext<CmsContext>();
-        _service = new SitemapService(_context);
+        _service = new SitemapService(_context, _context.BuildTemplateSourceResolvers());
     }
 
     private static string Unique(string prefix) => $"{prefix}-{Guid.NewGuid():N}"[..(prefix.Length + 9)];
@@ -64,7 +64,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     {
         var prefix = "/" + Unique("art-pub");
         var pattern = $"{prefix}/:slug";
-        var page = _context.BuildTestPage(path: pattern, published: true, indexed: true, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: pattern, published: true, indexed: true);
 
         var slugA = Unique("a");
         var slugB = Unique("b");
@@ -83,7 +83,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     {
         var prefix = "/" + Unique("art-unp");
         var pattern = $"{prefix}/:slug";
-        var page = _context.BuildTestPage(path: pattern, published: true, indexed: true, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: pattern, published: true, indexed: true);
 
         var draftSlug = Unique("draft");
         _context.BuildTestArticle(slug: draftSlug, published: false, pageId: page.Id);
@@ -98,7 +98,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     {
         var prefix = "/" + Unique("art-orph");
         var pattern = $"{prefix}/:slug";
-        _context.BuildTestPage(path: pattern, published: true, indexed: true, entityType: PageEntityType.Article);
+        _context.BuildTestPage(path: pattern, published: true, indexed: true);
 
         var orphanSlug = Unique("orph");
         _context.BuildTestArticle(slug: orphanSlug, published: true, pageId: null);
@@ -115,8 +115,8 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
         var prefixB = "/" + Unique("art-b");
         var patternA = $"{prefixA}/:slug";
         var patternB = $"{prefixB}/:slug";
-        var pageA = _context.BuildTestPage(path: patternA, published: true, indexed: true, entityType: PageEntityType.Article);
-        _context.BuildTestPage(path: patternB, published: true, indexed: true, entityType: PageEntityType.Article);
+        var pageA = _context.BuildTestPage(path: patternA, published: true, indexed: true);
+        _context.BuildTestPage(path: patternB, published: true, indexed: true);
 
         var slug = Unique("only-a");
         _context.BuildTestArticle(slug: slug, published: true, pageId: pageA.Id);
@@ -132,7 +132,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     {
         var prefix = "/" + Unique("dyn-unp");
         var pattern = $"{prefix}/:slug";
-        var page = _context.BuildTestPage(path: pattern, published: false, indexed: true, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: pattern, published: false, indexed: true);
 
         var slug = Unique("hidden");
         _context.BuildTestArticle(slug: slug, published: true, pageId: page.Id);
@@ -147,7 +147,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     {
         var prefix = "/" + Unique("dyn-nox");
         var pattern = $"{prefix}/:slug";
-        var page = _context.BuildTestPage(path: pattern, published: true, indexed: false, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: pattern, published: true, indexed: false);
 
         var slug = Unique("masked");
         _context.BuildTestArticle(slug: slug, published: true, pageId: page.Id);
@@ -162,7 +162,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     {
         var prefix = "/" + Unique("upd");
         var pattern = $"{prefix}/:slug";
-        var page = _context.BuildTestPage(path: pattern, published: true, indexed: true, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: pattern, published: true, indexed: true);
 
         var slug = Unique("entry");
         var article = _context.BuildTestArticle(slug: slug, published: true, pageId: page.Id);
@@ -182,11 +182,11 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     }
 
     [Test]
-    public async Task GetEntries_ShouldIgnoreDynamicPage_WhenEntityTypeIsNotSet()
+    public async Task GetEntries_ShouldIgnoreDynamicPage_WhenNoSourceIsAttached()
     {
         var prefix = "/" + Unique("noent");
         var pattern = $"{prefix}/:slug";
-        _context.BuildTestPage(path: pattern, published: true, indexed: true, entityType: null);
+        _context.BuildTestPage(path: pattern, published: true, indexed: true);
 
         var entries = await _service.GetEntriesAsync();
 
@@ -197,7 +197,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     public async Task GetEntries_ShouldPreferDedicatedPage_OverTemplateExpansion()
     {
         var prefix = "/" + Unique("dedup");
-        var page = _context.BuildTestPage(path: $"{prefix}/:slug", published: true, indexed: true, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: $"{prefix}/:slug", published: true, indexed: true);
         var slug = Unique("art");
         _context.BuildTestArticle(slug: slug, published: true, pageId: page.Id);
         var dedicated = _context.BuildTestPage(path: $"{prefix}/{slug}", published: true, indexed: true);
@@ -217,7 +217,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     public async Task GetEntries_ShouldExcludeExpandedPath_WhenDedicatedPageNotIndexed()
     {
         var prefix = "/" + Unique("noidx");
-        var page = _context.BuildTestPage(path: $"{prefix}/:slug", published: true, indexed: true, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: $"{prefix}/:slug", published: true, indexed: true);
         var slug = Unique("art");
         _context.BuildTestArticle(slug: slug, published: true, pageId: page.Id);
         _context.BuildTestPage(path: $"{prefix}/{slug}", published: true, indexed: false);
@@ -231,7 +231,7 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     public async Task GetEntries_ShouldKeepExpandedPath_WhenDedicatedPageUnpublished()
     {
         var prefix = "/" + Unique("unpub");
-        var page = _context.BuildTestPage(path: $"{prefix}/:slug", published: true, indexed: true, entityType: PageEntityType.Article);
+        var page = _context.BuildTestPage(path: $"{prefix}/:slug", published: true, indexed: true);
         var slug = Unique("art");
         _context.BuildTestArticle(slug: slug, published: true, pageId: page.Id);
         _context.BuildTestPage(path: $"{prefix}/{slug}", published: false, indexed: true);

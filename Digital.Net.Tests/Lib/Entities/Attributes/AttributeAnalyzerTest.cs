@@ -22,8 +22,11 @@ public class AttributeAnalyzerTest : UnitTest
 
         public string UniqueProperty { get; set; }
 
-        [MaxLength(50), Templatable]
+        [MaxLength(50), TemplateTarget]
         public string MaxLengthProperty { get; set; }
+
+        [TemplateSource]
+        public string SourceProperty { get; set; }
 
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int IdentityProperty { get; set; }
@@ -91,12 +94,24 @@ public class AttributeAnalyzerTest : UnitTest
         await Assert.That(AttributeAnalyzer<TestEntity>.GetPath("RequiredProperty")).IsEqualTo("RequiredProperty");
 
     [Test]
-    public async Task IsTemplatable_ReturnsTrue_ForTemplatableProperty() =>
-        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplatable("MaxLengthProperty")).IsTrue();
+    public async Task IsTemplateTarget_ReturnsTrue_ForTargetProperty() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateTarget("MaxLengthProperty")).IsTrue();
 
     [Test]
-    public async Task IsTemplatable_ReturnsFalse_ForNonTemplatableProperty() =>
-        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplatable("RequiredProperty")).IsFalse();
+    public async Task IsTemplateTarget_ReturnsFalse_ForSourceProperty() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateTarget("SourceProperty")).IsFalse();
+
+    [Test]
+    public async Task IsTemplateTarget_ReturnsFalse_ForUnflaggedProperty() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateTarget("RequiredProperty")).IsFalse();
+
+    [Test]
+    public async Task IsTemplateSource_ReturnsTrue_ForSourceProperty() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateSource("SourceProperty")).IsTrue();
+
+    [Test]
+    public async Task IsTemplateSource_ReturnsFalse_ForTargetProperty() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateSource("MaxLengthProperty")).IsFalse();
 
     [Test]
     public async Task IsReadOnly_ReturnsFalse_ForNonReadOnlyProperty() =>
@@ -180,12 +195,20 @@ public class AttributeAnalyzerTest : UnitTest
         await Assert.That(AttributeAnalyzer<TestEntity>.GetPath(typeof(TestEntity).GetProperty("RequiredProperty")!)).IsEqualTo("RequiredProperty");
 
     [Test]
-    public async Task IsTemplatable_ReturnsTrue_ForTemplatableProperty_ViaPropertyInfo() =>
-        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplatable(typeof(TestEntity).GetProperty("MaxLengthProperty")!)).IsTrue();
+    public async Task IsTemplateTarget_ReturnsTrue_ForTargetProperty_ViaPropertyInfo() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateTarget(typeof(TestEntity).GetProperty("MaxLengthProperty")!)).IsTrue();
 
     [Test]
-    public async Task IsTemplatable_ReturnsFalse_ForNonTemplatableProperty_ViaPropertyInfo() =>
-        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplatable(typeof(TestEntity).GetProperty("RequiredProperty")!)).IsFalse();
+    public async Task IsTemplateTarget_ReturnsFalse_ForUnflaggedProperty_ViaPropertyInfo() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateTarget(typeof(TestEntity).GetProperty("RequiredProperty")!)).IsFalse();
+
+    [Test]
+    public async Task IsTemplateSource_ReturnsTrue_ForSourceProperty_ViaPropertyInfo() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateSource(typeof(TestEntity).GetProperty("SourceProperty")!)).IsTrue();
+
+    [Test]
+    public async Task IsTemplateSource_ReturnsFalse_ForTargetProperty_ViaPropertyInfo() =>
+        await Assert.That(AttributeAnalyzer<TestEntity>.IsTemplateSource(typeof(TestEntity).GetProperty("MaxLengthProperty")!)).IsFalse();
 
     [Test]
     public async Task GetRegex_ReturnsNotNull_ForRegexProperty_ViaPropertyInfo() =>

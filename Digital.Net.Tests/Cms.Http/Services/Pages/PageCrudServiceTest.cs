@@ -35,7 +35,7 @@ public class PageCrudServiceTest : UnitTest, IAsyncInitializer
 
         var dispatcher = new PatchDispatcher<Page>([openGraphResolver]);
         var crudService = new CrudService<CmsContext, Page>(_context, dispatcher);
-        _service = new PageCrudService(crudService, _context);
+        _service = new PageCrudService(crudService);
     }
 
     private static JsonElement BuildPatch(params object[] ops) => JsonSerializer.SerializeToElement(ops);
@@ -65,24 +65,15 @@ public class PageCrudServiceTest : UnitTest, IAsyncInitializer
     }
 
     [Test]
-    public async Task CreatePage_ShouldRejectEntityTypeWithoutDynamicSlug()
+    public async Task CreatePage_ShouldAcceptStaticPath()
     {
+        // A page no longer declares which entity feeds it, so a static path needs no dynamic slug.
         var path = "/static-" + Guid.NewGuid().ToString("N")[..8];
-        var payload = new PagePayload { Path = path, EntityType = PageEntityType.Article };
-        var result = await _service.CreatePage(payload, Guid.NewGuid());
-        await Assert.That(result.HasErrorOfType<EntityValidationException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task CreatePage_ShouldAcceptEntityTypeWithDynamicSlug()
-    {
-        var path = "/products-" + Guid.NewGuid().ToString("N")[..8] + "/:id";
-        var payload = new PagePayload { Path = path, EntityType = PageEntityType.Article };
-        var result = await _service.CreatePage(payload, Guid.NewGuid());
+        var result = await _service.CreatePage(new PagePayload { Path = path }, Guid.NewGuid());
 
         await Assert.That(result.HasError).IsFalse();
         var saved = await _context.Pages.AsNoTracking().FirstAsync(p => p.Id == result.Value);
-        await Assert.That(saved.EntityType).IsEqualTo(PageEntityType.Article);
+        await Assert.That(saved.Path).IsEqualTo(path);
     }
 
     [Test]

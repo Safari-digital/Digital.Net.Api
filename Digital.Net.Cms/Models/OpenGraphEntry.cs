@@ -15,7 +15,7 @@ public class OpenGraphEntry : Entity, IUntrackedEntity
 
     [Column("Content")]
     [Required]
-    [Templatable]
+    [TemplateTarget]
     [MaxLength(2048)]
     public required string Content { get; set; }
 }

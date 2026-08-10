@@ -76,11 +76,17 @@ public static class AttributeAnalyzer<T>
     public static string GetPath(PropertyInfo property) =>
         property.GetCustomAttribute<ColumnAttribute>()?.Name ?? property.Name;
 
-    public static bool IsTemplatable(string propertyName) =>
-        typeof(T).GetProperty(propertyName)?.GetCustomAttribute<TemplatableAttribute>() is not null;
+    public static bool IsTemplateTarget(string propertyName) =>
+        typeof(T).GetProperty(propertyName)?.GetCustomAttribute<TemplateTargetAttribute>() is not null;
 
-    public static bool IsTemplatable(PropertyInfo property) =>
-        property.GetCustomAttribute<TemplatableAttribute>() is not null;
+    public static bool IsTemplateTarget(PropertyInfo property) =>
+        property.GetCustomAttribute<TemplateTargetAttribute>() is not null;
+
+    public static bool IsTemplateSource(string propertyName) =>
+        typeof(T).GetProperty(propertyName)?.GetCustomAttribute<TemplateSourceAttribute>() is not null;
+
+    public static bool IsTemplateSource(PropertyInfo property) =>
+        property.GetCustomAttribute<TemplateSourceAttribute>() is not null;
 
     public static Regex? GetRegex(string propertyName) =>
         typeof(T).GetProperty(propertyName)?.GetCustomAttribute<RegexValidationAttribute>()?.Regex;

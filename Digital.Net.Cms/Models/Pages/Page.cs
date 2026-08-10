@@ -18,10 +18,6 @@ public class Page : Entity
     [RegexValidation(RegularExpressions.PagePathPattern)]
     public required string Path { get; set; }
 
-    [Column("EntityType")]
-    [MaxLength(16)]
-    public PageEntityType? EntityType { get; set; }
-
     [Column("Published")]
     [Sortable]
     public bool Published { get; set; }
@@ -31,18 +27,18 @@ public class Page : Entity
     public bool Indexed { get; set; } = true;
 
     [Column("Title")]
-    [Templatable]
+    [TemplateTarget]
     [MaxLength(256)]
     [Sortable]
     public string? Title { get; set; }
 
     [Column("Description")]
-    [Templatable]
+    [TemplateTarget]
     [MaxLength(512)]
     public string? Description { get; set; }
 
     [Column("JsonLd")]
-    [Templatable]
+    [TemplateTarget]
     [MaxLength(65535)]
     public string? JsonLd { get; set; }
 

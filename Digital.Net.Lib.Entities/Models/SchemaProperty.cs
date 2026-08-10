@@ -20,7 +20,8 @@ public abstract class SchemaProperty
     public bool IsSecret { get; init; }
     public bool IsRequired { get; init; }
     public bool IsUnique { get; init; }
-    public bool IsTemplatable { get; init; }
+    public bool IsTemplateTarget { get; init; }
+    public bool IsTemplateSource { get; init; }
     public int? MaxLength { get; init; }
     public bool IsIdentity { get; init; }
     public bool IsForeignKey { get; init; }
@@ -65,7 +66,8 @@ public class SchemaProperty<T> : SchemaProperty
         IsSecret = AttributeAnalyzer<T>.IsSecret(propertyInfo);
         IsRequired = AttributeAnalyzer<T>.IsRequired(propertyInfo);
         IsUnique = AttributeAnalyzer<T>.IsUnique(propertyInfo);
-        IsTemplatable = AttributeAnalyzer<T>.IsTemplatable(propertyInfo);
+        IsTemplateTarget = AttributeAnalyzer<T>.IsTemplateTarget(propertyInfo);
+        IsTemplateSource = AttributeAnalyzer<T>.IsTemplateSource(propertyInfo);
         MaxLength = AttributeAnalyzer<T>.MaxLength(propertyInfo);
         IsIdentity = AttributeAnalyzer<T>.IsIdentity(propertyInfo);
         IsForeignKey = AttributeAnalyzer<T>.IsForeignKey(propertyInfo);

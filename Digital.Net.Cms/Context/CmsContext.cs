@@ -39,7 +39,6 @@ public class CmsContext(DbContextOptions<CmsContext> options) : DbContext(option
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.HasDefaultSchema(Schema);
-        builder.BuildPage();
         builder.BuildArticle();
         builder.BuildMediaVariant();
         builder.BuildFormField();

@@ -1,12 +1,13 @@
 using Digital.Net.Cms.Context;
 using Digital.Net.Cms.Http.Dto;
 using Digital.Net.Cms.Models.Pages;
+using Digital.Net.Cms.Templating;
 using Digital.Net.Lib.Date;
 using Microsoft.EntityFrameworkCore;
 
 namespace Digital.Net.Cms.Http.Services;
 
-public class SitemapService(CmsContext context)
+public class SitemapService(CmsContext context, IEnumerable<ITemplateSourceResolver> sourceResolvers)
 {
     public async Task<List<SitemapEntryDto>> GetEntriesAsync()
     {
@@ -39,27 +40,28 @@ public class SitemapService(CmsContext context)
         return entries;
     }
 
-    private async Task<List<SitemapEntryDto>> ResolveDynamicPageAsync(Page page) =>
-        page.EntityType switch
-        {
-            PageEntityType.Article => await ResolveArticleEntriesAsync(page),
-            _ => []
-        };
-
-    private async Task<List<SitemapEntryDto>> ResolveArticleEntriesAsync(Page page)
+    /// <summary>
+    ///     Unfolds a pattern into one entry per source attached to it. Disappears once every source owns
+    ///     its dedicated page, which the loop above already lists on its own.
+    /// </summary>
+    private async Task<List<SitemapEntryDto>> ResolveDynamicPageAsync(Page page)
     {
-        var articles = await context.Articles
-            .AsNoTracking()
-            .Where(a => a.PublishedAt != null && a.PageId == page.Id)
-            .Select(a => new { a.Slug, a.UpdatedAt })
-            .ToListAsync();
+        var entries = new List<SitemapEntryDto>();
+        foreach (var resolver in sourceResolvers)
+        foreach (var source in await resolver.ListForPageAsync(page.Id))
+        {
+            // Without a discriminator there is no value to substitute into the pattern.
+            var discriminator = resolver.GetDiscriminatorValue(source);
+            if (string.IsNullOrEmpty(discriminator))
+                continue;
 
-        return articles
-            .Select(a => new SitemapEntryDto
+            entries.Add(new SitemapEntryDto
             {
-                Path = PagePathAnalyzer.ResolveDynamicPath(page.Path, a.Slug),
-                UpdatedAt = DateTimeResolver.MaxUpdatedAt(a.UpdatedAt, page.UpdatedAt)
-            })
-            .ToList();
+                Path = PagePathAnalyzer.ResolveDynamicPath(page.Path, discriminator),
+                UpdatedAt = DateTimeResolver.MaxUpdatedAt(source.UpdatedAt, page.UpdatedAt)
+            });
+        }
+
+        return entries;
     }
 }

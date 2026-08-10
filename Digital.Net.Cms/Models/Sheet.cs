@@ -21,7 +21,7 @@ public class Sheet : Entity, IUntrackedEntity
 
     [Column("Content")]
     [Required]
-    [Templatable]
+    [TemplateTarget]
     public required string Content { get; set; }
 
     [Column("Published")]
