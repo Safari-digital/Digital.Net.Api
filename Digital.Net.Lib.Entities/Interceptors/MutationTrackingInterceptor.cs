@@ -21,6 +21,13 @@ namespace Digital.Net.Lib.Entities.Interceptors;
 public class MutationTrackingInterceptor(IServiceProvider serviceProvider) : SaveChangesInterceptor
 {
     private const int MaxValueLength = 512;
+
+    /// <summary>
+    ///     Separates a truncated value from its length suffix, so a reader tells it from an empty field.
+    ///     Kept ASCII on purpose: the payload is serialized with the default encoder, which escapes
+    ///     non-ASCII, and an escaped marker would be unsearchable in the stored JSON.
+    /// </summary>
+    public const string TruncationMarker = "...";
     private static readonly HashSet<string> IgnoredProperties = ["Id", "CreatedAt", "UpdatedAt"];
 
     private static readonly ConcurrentDictionary<Type, FrozenSet<string>> SecretProperties = new();
@@ -146,8 +153,15 @@ public class MutationTrackingInterceptor(IServiceProvider serviceProvider) : Sav
         return changes.Count == 0 ? null : JsonSerializer.Serialize(changes);
     }
 
+    /// <summary>
+    ///     Bounds a value so one oversized field cannot blow up the audit row. The kept prefix matters:
+    ///     editorial content lives in tracked fields now, and an audit that only says "3000 chars became
+    ///     3200" records that something changed without recording what.
+    /// </summary>
     private static object? Cap(object? value) =>
-        value is string { Length: > MaxValueLength } s ? $"…({s.Length} chars)" : value;
+        value is string { Length: > MaxValueLength } s
+            ? $"{s[..MaxValueLength]}{TruncationMarker}({s.Length} chars)"
+            : value;
 
     private static FrozenSet<string> BuildSecretSet(Type clrType) =>
         clrType.GetProperties()

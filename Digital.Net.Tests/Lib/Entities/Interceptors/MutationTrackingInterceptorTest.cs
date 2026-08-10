@@ -146,6 +146,64 @@ public class MutationTrackingInterceptorTest : UnitTest
         await Assert.That(mutation.Payload!.Contains(nameof(User.Password))).IsFalse();
     }
 
+    [Test]
+    public async Task Create_Sheet_IsTracked()
+    {
+        await using var ctx = CreateTrackedContext<CmsContext>();
+        var sheet = NewSheet("<p>hello</p>");
+
+        ctx.Add(sheet);
+        await ctx.SaveChangesAsync();
+
+        var mutation = await ReadMutation<CmsContext>(sheet.Id);
+        await Assert.That(mutation).IsNotNull();
+        await Assert.That(mutation!.EntityType).IsEqualTo(nameof(Sheet));
+    }
+
+    [Test]
+    public async Task Payload_TruncatesOversizedValue_AndKeepsAReadablePrefix()
+    {
+        await using var ctx = CreateTrackedContext<CmsContext>();
+        var content = new string('a', 2000);
+        var sheet = NewSheet(content);
+
+        ctx.Add(sheet);
+        await ctx.SaveChangesAsync();
+
+        var mutation = await ReadMutation<CmsContext>(sheet.Id);
+        await Assert.That(mutation!.Payload).IsNotNull();
+        await Assert.That(mutation.Payload!.Contains(MutationTrackingInterceptor.TruncationMarker)).IsTrue();
+        await Assert.That(mutation.Payload!.Contains("2000 chars")).IsTrue();
+        // The kept prefix is what makes the trail usable on editorial content.
+        await Assert.That(mutation.Payload!.Contains(new string('a', 512))).IsTrue();
+        await Assert.That(mutation.Payload!.Contains(content)).IsFalse();
+    }
+
+    [Test]
+    public async Task Payload_LeavesValueUnderThreshold_Untouched()
+    {
+        await using var ctx = CreateTrackedContext<CmsContext>();
+        // No angle brackets: the default JSON encoder escapes them, which would make the assertion
+        // about escaping rather than about truncation.
+        var content = $"short-{TestId}";
+        var sheet = NewSheet(content);
+
+        ctx.Add(sheet);
+        await ctx.SaveChangesAsync();
+
+        var mutation = await ReadMutation<CmsContext>(sheet.Id);
+        await Assert.That(mutation!.Payload!.Contains(content)).IsTrue();
+        await Assert.That(mutation.Payload!.Contains(MutationTrackingInterceptor.TruncationMarker)).IsFalse();
+    }
+
+    private Sheet NewSheet(string content) => new()
+    {
+        Name = $"sheet-{TestId}-{Guid.NewGuid():N}"[..32],
+        Type = "html",
+        Content = content,
+        Published = true
+    };
+
     private T CreateTrackedContext<T>() where T : DbContext
     {
         var provider = new ServiceCollection()

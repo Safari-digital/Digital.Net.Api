@@ -32,6 +32,8 @@ public class MutationTrackingPerimeterTest
     [Arguments(typeof(Form))]
     [Arguments(typeof(FormField))]
     [Arguments(typeof(FormSubmission))]
+    // Sheets carry editorial content, which is precisely what an audit trail is for.
+    [Arguments(typeof(Sheet))]
     public async Task Tracked_entities_are_Entity_and_not_excluded(Type type)
     {
         await Assert.That(typeof(Entity).IsAssignableFrom(type)).IsTrue();
@@ -44,7 +46,6 @@ public class MutationTrackingPerimeterTest
     [Arguments(typeof(EntityMutation))]
     [Arguments(typeof(Avatar))]
     [Arguments(typeof(MediaVariant))]
-    [Arguments(typeof(Sheet))]
     [Arguments(typeof(OpenGraphEntry))]
     public async Task Excluded_entities_implement_IUntrackedEntity(Type type) =>
         await Assert.That(typeof(IUntrackedEntity).IsAssignableFrom(type)).IsTrue();
