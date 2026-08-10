@@ -7,7 +7,7 @@ namespace Digital.Net.Cms.Templating;
 ///     without touching the database.
 /// </summary>
 /// <param name="SourceType">The entity feeding the tokens.</param>
-/// <param name="Navigation">Name of the navigation towards the hosting page; its foreign key carries the link.</param>
+/// <param name="ForeignKey">Name of the property holding the id of the hosting page.</param>
 /// <param name="Discriminator">Transitional. Property telling apart sources sharing one host page.</param>
 /// <param name="PublishedFlag">Transitional. Property gating publication.</param>
 /// <param name="PublishedFlagIsBoolean">
@@ -15,7 +15,7 @@ namespace Digital.Net.Cms.Templating;
 /// </param>
 public sealed record TemplateSourceDescriptor(
     Type SourceType,
-    string Navigation,
+    string ForeignKey,
     string? Discriminator,
     string? PublishedFlag,
     bool PublishedFlagIsBoolean

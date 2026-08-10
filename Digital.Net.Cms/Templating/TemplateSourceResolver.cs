@@ -13,9 +13,6 @@ public class TemplateSourceResolver<TContext, TEntity>(TContext context, Templat
     where TContext : DbContext
     where TEntity : Entity
 {
-    // The model is identical across instances of a closed generic, so computing it twice is harmless.
-    private static string? _foreignKey;
-
     public Type SourceType => typeof(TEntity);
 
     public async Task<Entity?> ResolveAsync(
@@ -52,7 +49,7 @@ public class TemplateSourceResolver<TContext, TEntity>(TContext context, Templat
 
     private IQueryable<TEntity> AttachedTo(IReadOnlyList<Guid> pageIds)
     {
-        var foreignKey = ForeignKey();
+        var foreignKey = descriptor.ForeignKey;
         // Nullable so an unattached source never matches a page id.
         var ids = pageIds.Select(id => (Guid?)id).ToList();
         var query = context.Set<TEntity>()
@@ -68,29 +65,4 @@ public class TemplateSourceResolver<TContext, TEntity>(TContext context, Templat
             : query.Where(e => EF.Property<DateTime?>(e, flag) != null);
     }
 
-    private string ForeignKey() => _foreignKey ??= ResolveForeignKey();
-
-    private string ResolveForeignKey()
-    {
-        var entityType = context.Model.FindEntityType(typeof(TEntity))
-                         ?? throw new InvalidOperationException(
-                             $"Template source '{typeof(TEntity).Name}' is not part of the model of "
-                             + $"'{typeof(TContext).Name}'."
-                         );
-
-        var navigation = entityType.FindNavigation(descriptor.Navigation)
-                         ?? throw new InvalidOperationException(
-                             $"Template source '{typeof(TEntity).Name}' declares [TemplateHost] on "
-                             + $"'{descriptor.Navigation}', which is not a navigation of the model."
-                         );
-
-        var properties = navigation.ForeignKey.Properties;
-        if (properties.Count != 1)
-            throw new InvalidOperationException(
-                $"Template source '{typeof(TEntity).Name}' hosts through a composite foreign key, "
-                + "which template resolution does not support."
-            );
-
-        return properties[0].Name;
-    }
 }

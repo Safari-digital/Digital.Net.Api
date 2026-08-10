@@ -41,15 +41,15 @@ public class Article : Entity
     [Sortable]
     public DateTime? PublishedAt { get; set; }
 
-    [Column("PageId")]
-    [ForeignKey("Page")]
-    public Guid? PageId { get; set; }
-
     // Discriminator and PublishedFlag are transitional: N articles still share one template page, so the
     // slug tells them apart and PublishedAt gates publication. Both drop once every article owns a
     // dedicated page carrying its own Published state — resolution then reduces to the foreign key.
-    [ReadOnly]
+    [Column("PageId")]
+    [ForeignKey("Page")]
     [TemplateHost(Discriminator = nameof(Slug), PublishedFlag = nameof(PublishedAt))]
+    public Guid? PageId { get; set; }
+
+    [ReadOnly]
     public virtual Page? Page { get; set; }
 
     public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();

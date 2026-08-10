@@ -19,25 +19,31 @@ public static class TemplateSourceScanner
             if (type is not { IsClass: true, IsAbstract: false } || !typeof(Entity).IsAssignableFrom(type))
                 continue;
 
-            var navigations = type.GetProperties()
+            var keys = type.GetProperties()
                 .Where(property => property.GetCustomAttribute<TemplateHostAttribute>() is not null)
                 .ToList();
 
-            if (navigations.Count == 0)
+            if (keys.Count == 0)
                 continue;
 
-            if (navigations.Count > 1)
+            if (keys.Count > 1)
                 throw new InvalidOperationException(
-                    $"Template source '{type.Name}' carries [TemplateHost] on several navigations "
-                    + $"({string.Join(", ", navigations.Select(n => n.Name))}); a source hosts on exactly one page."
+                    $"Template source '{type.Name}' carries [TemplateHost] on several properties "
+                    + $"({string.Join(", ", keys.Select(k => k.Name))}); a source hosts on exactly one page."
                 );
 
-            var navigation = navigations[0];
-            var host = navigation.GetCustomAttribute<TemplateHostAttribute>()!;
+            var foreignKey = keys[0];
+            if (foreignKey.PropertyType != typeof(Guid?) && foreignKey.PropertyType != typeof(Guid))
+                throw new InvalidOperationException(
+                    $"[TemplateHost] on '{type.Name}.{foreignKey.Name}' is a {foreignKey.PropertyType.Name}; "
+                    + "it must sit on the Guid foreign key holding the id of the hosting page."
+                );
+
+            var host = foreignKey.GetCustomAttribute<TemplateHostAttribute>()!;
 
             yield return new TemplateSourceDescriptor(
                 type,
-                navigation.Name,
+                foreignKey.Name,
                 ValidateDiscriminator(type, host.Discriminator),
                 host.PublishedFlag,
                 IsBooleanPublishedFlag(type, host.PublishedFlag)
