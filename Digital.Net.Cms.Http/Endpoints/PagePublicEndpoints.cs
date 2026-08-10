@@ -28,8 +28,8 @@ public static class PagePublicEndpoints
             .WithSummary("Build")
             .WithDescription(
                 "Builds a published page response for the templated Path declared by the client, " +
-                "interpolating [TemplateTarget] fields with the source instance identified by PageSlug. " +
-                "For static pages, omit PageSlug."
+                "interpolating [TemplateTarget] fields with the source instance hosted by the page. " +
+                "Pages hosting no source are served as-is."
             );
 
         publicController
@@ -45,7 +45,7 @@ public static class PagePublicEndpoints
             .WithSummary("BuildSheet")
             .WithDescription(
                 "Builds the published sheet identified by SheetId for the page declared by the client, " +
-                "interpolating Sheet.Content with the source instance identified by PageSlug. " +
+                "interpolating Sheet.Content with the source instance hosted by the page. " +
                 "Returns the raw content with its matching Content-Type."
             );
 

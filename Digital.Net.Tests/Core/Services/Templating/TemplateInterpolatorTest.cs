@@ -158,6 +158,21 @@ public class TemplateInterpolatorTest : UnitTest
         await Assert.That(result).IsEqualTo(template);
     }
 
+    /// <summary>
+    ///     The alias is matched case-insensitively, like the field. The back-office validator lowercases
+    ///     before deciding a term is known, so a stricter engine would accept a token there and emit it
+    ///     verbatim into the live page title.
+    /// </summary>
+    [Test]
+    public async Task Interpolate_MatchesTheSourceAlias_WhateverItsCase()
+    {
+        var sources = Sources(new TestSource { Title = "Hello", Description = "World" });
+        await Assert.That(TemplateInterpolator.Interpolate("{{ TestSource.title }}", sources)).IsEqualTo("Hello");
+        await Assert.That(TemplateInterpolator.Interpolate("{{ TESTSOURCE.title }}", sources)).IsEqualTo("Hello");
+        await Assert.That(TemplateInterpolator.Interpolate("{{ TestSource.title ?? testsource.description }}", sources))
+            .IsEqualTo("Hello");
+    }
+
     [Test]
     public async Task Interpolate_ToleratesWhitespaceAroundTheFallbackOperator()
     {

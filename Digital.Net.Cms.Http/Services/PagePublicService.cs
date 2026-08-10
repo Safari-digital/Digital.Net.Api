@@ -184,9 +184,9 @@ public class PagePublicService(
     }
 
     /// <summary>
-    ///     Three-step resolution: the published page whose Path is exactly the requested one, otherwise
-    ///     the most specific published template covering it, otherwise 404. When a dedicated page is
-    ///     covered by a template, the template is returned alongside for merging.
+    ///     Resolves the published page whose Path is exactly the requested one, or 404. When that page
+    ///     is covered by a template, the most specific one is returned alongside for merging — templates
+    ///     are inherited from, never served.
     /// </summary>
     private async Task<(Page page, Page? template, IReadOnlyDictionary<string, object>? sources)>
         ResolvePageAndSourcesAsync(
@@ -202,10 +202,12 @@ public class PagePublicService(
             .Where(p => p.Path == payload.Path && p.Published)
             .FirstOrDefaultAsync(ct);
 
+        // A dynamic path is a pattern, not an address: a template is only ever an inheritance source,
+        // never a page in its own right. Serving it for a path it merely covers would answer 200 for
+        // any URL under the pattern — an unpublished article, or a slug that never existed — with its
+        // own tokens as content, since no source hosts on it. Nothing to serve means 404.
+        var page = dedicated ?? throw new InvalidPagePathException();
         var template = await templateResolver.ResolveAsync(payload.Path, ct);
-        var page = dedicated ?? template ?? throw new InvalidPagePathException();
-        if (dedicated is null)
-            template = null;
 
         // Sources hang off whichever page declares the pattern: the dedicated page itself, or the
         // template it inherits from when the dedicated page is a static child.

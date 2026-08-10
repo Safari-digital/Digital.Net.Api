@@ -354,6 +354,8 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         var prefix = $"/spec-{TestId}-{Guid.NewGuid().ToString("N")[..6]}";
         _context.Pages.Add(new Page { Path = $"{prefix}/:a/:b", Published = true, Title = "broad" });
         _context.Pages.Add(new Page { Path = $"{prefix}/foo/:b", Published = true, Title = "narrow" });
+        // Templates are inherited from, never served: specificity is arbitrated for a real page.
+        _context.Pages.Add(new Page { Path = $"{prefix}/foo/bar", Published = true });
         _context.SaveChanges();
 
         var result = await _service.BuildPublicPage(Build($"{prefix}/foo/bar"));
@@ -368,12 +370,36 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         var prefix = $"/tie-{TestId}-{Guid.NewGuid().ToString("N")[..6]}";
         _context.Pages.Add(new Page { Path = $"{prefix}/:a/x", Published = true, Title = "short" });
         _context.Pages.Add(new Page { Path = $"{prefix}/foo/:b", Published = true, Title = "long" });
+        _context.Pages.Add(new Page { Path = $"{prefix}/foo/x", Published = true });
         _context.SaveChanges();
 
         var result = await _service.BuildPublicPage(Build($"{prefix}/foo/x"));
 
         await Assert.That(result.HasError).IsFalse();
         await Assert.That(result.Value!.Title).IsEqualTo("long");
+    }
+
+    /// <summary>
+    ///     A template covering the path is not a page: without a published page at that exact path the
+    ///     build must fail. Serving the template instead would answer 200 for every unknown slug — and
+    ///     for a page that was deliberately unpublished — with its raw tokens as title and description,
+    ///     since no source hosts on a pattern.
+    /// </summary>
+    [Test]
+    public async Task BuildPage_Fails_WhenOnlyATemplateCoversThePath()
+    {
+        var prefix = $"/ghost-{TestId}-{Guid.NewGuid().ToString("N")[..6]}";
+        _context.Pages.Add(
+            new Page { Path = $"{prefix}/:slug", Published = true, Title = "{{ article.title }}" }
+        );
+        _context.Pages.Add(new Page { Path = $"{prefix}/unpublished", Published = false });
+        _context.SaveChanges();
+
+        var missing = await _service.BuildPublicPage(Build($"{prefix}/never-existed"));
+        var unpublished = await _service.BuildPublicPage(Build($"{prefix}/unpublished"));
+
+        await Assert.That(missing.HasError).IsTrue();
+        await Assert.That(unpublished.HasError).IsTrue();
     }
 
     [Test]

@@ -18,7 +18,7 @@ public static partial class TemplateInterpolator
     ///     holds the whole chain; <see cref="ResolveToken" /> walks its terms.
     /// </summary>
     [GeneratedRegex(
-        @"\{\{\s*([a-z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*(?:\s*\?\?\s*[a-z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}"
+        @"\{\{\s*([a-zA-Z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*(?:\s*\?\?\s*[a-zA-Z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}"
     )]
     private static partial Regex TokenRegex();
 
@@ -75,7 +75,9 @@ public static partial class TemplateInterpolator
         foreach (var term in match.Groups[1].Value.Split(FallbackSeparator, StringSplitOptions.TrimEntries))
         {
             var separator = term.IndexOf('.');
-            if (!sources.TryGetValue(term[..separator], out var sourceInstance))
+            // Lowercased like the field below: the alias names a type, and an editor writing
+            // {{ Article.title }} means the same source the autocomplete would have inserted.
+            if (!sources.TryGetValue(term[..separator].ToLowerInvariant(), out var sourceInstance))
                 continue;
 
             var fields = GetSourceFields(sourceInstance.GetType());
