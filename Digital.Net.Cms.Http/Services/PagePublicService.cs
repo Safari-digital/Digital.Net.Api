@@ -207,24 +207,21 @@ public class PagePublicService(
         if (dedicated is null)
             template = null;
 
-        IReadOnlyDictionary<string, object>? sources = null;
-        if (!string.IsNullOrEmpty(payload.PageSlug))
-        {
-            // Sources hang off whichever page declares the pattern: the dedicated page itself, or the
-            // template it inherits from when the dedicated page is a static child.
-            var owners = template is null ? new[] { page.Id } : [page.Id, template.Id];
-            var source = await ResolveSourceAsync(owners, payload.PageSlug, ct);
-            // A static dedicated page stands on its own: a missing interpolation source only
-            // 404s when a template answers (unknown article slugs must keep returning 404).
-            var servesDedicatedPage = dedicated is not null && !PagePathAnalyzer.HasDynamicSlug(dedicated.Path);
-            if (source is null && !servesDedicatedPage)
-                throw new InvalidPagePathException();
-            if (source is not null)
-                sources = new Dictionary<string, object>
-                {
-                    [source.GetCanonicalType().Name.ToLowerInvariant()] = source
-                };
-        }
+        // Sources hang off whichever page declares the pattern: the dedicated page itself, or the
+        // template it inherits from when the dedicated page is a static child.
+        var owners = template is null ? new[] { page.Id } : [page.Id, template.Id];
+        var source = await ResolveSourceAsync(owners, ct);
+
+        IReadOnlyDictionary<string, object>? sources = source is null
+            ? null
+            : new Dictionary<string, object>
+            {
+                [source.GetCanonicalType().Name.ToLowerInvariant()] = source
+            };
+
+        // A page with no source is not an error: a static page has none, and a page whose source is
+        // gone renders its placeholders rather than disappearing. Publication is what gates a page,
+        // and the query above already applied it.
 
         if (template is not null)
             MergeTemplateValues(page, template);
@@ -273,13 +270,12 @@ public class PagePublicService(
     /// </summary>
     private async Task<Entity?> ResolveSourceAsync(
         IReadOnlyList<Guid> owners,
-        string slug,
         CancellationToken ct = default
     )
     {
         foreach (var resolver in sourceResolvers)
         {
-            var source = await resolver.ResolveAsync(owners, slug, ct);
+            var source = await resolver.ResolveAsync(owners, ct);
             if (source is not null)
                 return source;
         }

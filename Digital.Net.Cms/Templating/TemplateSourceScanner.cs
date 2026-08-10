@@ -39,58 +39,7 @@ public static class TemplateSourceScanner
                     + "it must sit on the Guid foreign key holding the id of the hosting page."
                 );
 
-            var host = foreignKey.GetCustomAttribute<TemplateHostAttribute>()!;
-
-            yield return new TemplateSourceDescriptor(
-                type,
-                foreignKey.Name,
-                ValidateDiscriminator(type, host.Discriminator),
-                host.PublishedFlag,
-                IsBooleanPublishedFlag(type, host.PublishedFlag)
-            );
+            yield return new TemplateSourceDescriptor(type, foreignKey.Name);
         }
-    }
-
-    private static string? ValidateDiscriminator(Type type, string? discriminator)
-    {
-        if (discriminator is null)
-            return null;
-
-        var property = type.GetProperty(discriminator)
-                       ?? throw new InvalidOperationException(
-                           $"Template source '{type.Name}' declares the discriminator '{discriminator}', "
-                           + "which is not one of its properties."
-                       );
-
-        if (property.PropertyType != typeof(string))
-            throw new InvalidOperationException(
-                $"Discriminator '{type.Name}.{discriminator}' is a {property.PropertyType.Name}; "
-                + "template resolution matches it against a string and only supports string."
-            );
-
-        return discriminator;
-    }
-
-    private static bool IsBooleanPublishedFlag(Type type, string? publishedFlag)
-    {
-        if (publishedFlag is null)
-            return false;
-
-        var property = type.GetProperty(publishedFlag)
-                       ?? throw new InvalidOperationException(
-                           $"Template source '{type.Name}' declares the publication flag '{publishedFlag}', "
-                           + "which is not one of its properties."
-                       );
-
-        if (property.PropertyType == typeof(bool))
-            return true;
-
-        if (property.PropertyType == typeof(DateTime?))
-            return false;
-
-        throw new InvalidOperationException(
-            $"Publication flag '{type.Name}.{publishedFlag}' is a {property.PropertyType.Name}; "
-            + "only bool and DateTime? are supported."
-        );
     }
 }

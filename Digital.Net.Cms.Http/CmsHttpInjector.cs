@@ -20,7 +20,6 @@ public static class CmsHttpInjector
         builder.Services
             .AddScoped<PagePublicService>()
             .AddScoped<PageTemplateResolver>()
-            .AddScoped<ArticleService>()
             .AddScoped<MediaLabelService>()
             .AddScoped<SitemapService>()
             .AddScoped<PageCrudService>()
@@ -39,11 +38,8 @@ public static class CmsHttpInjector
     public static WebApplication UseDigitalNetCmsHttp(this WebApplication app)
     {
         app
-            .MapCmsTagEndpoints()
             .MapCmsPageEndpoints()
             .MapCmsPagePublicEndpoints()
-            .MapCmsArticleEndpoints()
-            .MapCmsArticlePublicEndpoints()
             .MapCmsMediaEndpoints()
             .MapCmsSitemapEndpoints()
             .MapCmsFormEndpoints()

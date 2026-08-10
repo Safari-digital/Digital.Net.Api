@@ -1,35 +1,18 @@
-using Digital.Net.Cms.Context;
 using Digital.Net.Lib.Messages;
-using Microsoft.EntityFrameworkCore;
 
 namespace Digital.Net.Cms.Http.Services;
 
-public class MediaLabelService(
-    CmsContext context
-)
+/// <summary>
+///     Suggests the media labels already in use, for the back-office autocomplete.
+///     <para>
+///         It used to read them from ArticleMedia. Article left the library, and with it the only pivot
+///         that labelled a media — so the CMS has no labels of its own to offer. The endpoint keeps its
+///         contract and answers empty rather than disappearing, which would break the input that calls
+///         it; suggesting client labels belongs to whoever owns the labelled pivot now.
+///     </para>
+/// </summary>
+public class MediaLabelService
 {
-    public async Task<Result<List<string>>> GetExistingLabels(string? search, CancellationToken ct)
-    {
-        var result = new Result<List<string>>();
-        try
-        {
-            var query = context.ArticleMedia
-                .Where(p => p.Label != null && p.Label != "")
-                .Select(p => p.Label!);
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var needle = search.Trim().ToLowerInvariant();
-                query = query.Where(l => l.Contains(needle));
-            }
-
-            result.Value = await query.Distinct().OrderBy(l => l).ToListAsync(ct);
-        }
-        catch (Exception ex)
-        {
-            result.AddError(ex);
-        }
-
-        return result;
-    }
+    public Task<Result<List<string>>> GetExistingLabels(string? search, CancellationToken ct) =>
+        Task.FromResult(new Result<List<string>> { Value = [] });
 }

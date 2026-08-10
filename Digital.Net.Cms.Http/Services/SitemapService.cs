@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Digital.Net.Cms.Http.Services;
 
-public class SitemapService(CmsContext context, IEnumerable<ITemplateSourceResolver> sourceResolvers)
+public class SitemapService(CmsContext context)
 {
     public async Task<List<SitemapEntryDto>> GetEntriesAsync()
     {
@@ -33,35 +33,10 @@ public class SitemapService(CmsContext context, IEnumerable<ITemplateSourceResol
                     entries.Add(new SitemapEntryDto { Path = page.Path, UpdatedAt = page.UpdatedAt });
                 continue;
             }
-            entries.AddRange((await ResolveDynamicPageAsync(page))
-                .Where(e => !dedicatedPaths.Contains(e.Path) && seen.Add(e.Path)));
+            // A pattern is a template, not a page: it has nothing of its own to list.
         }
 
         return entries;
     }
 
-    /// <summary>
-    ///     Unfolds a pattern into one entry per source attached to it. Disappears once every source owns
-    ///     its dedicated page, which the loop above already lists on its own.
-    /// </summary>
-    private async Task<List<SitemapEntryDto>> ResolveDynamicPageAsync(Page page)
-    {
-        var entries = new List<SitemapEntryDto>();
-        foreach (var resolver in sourceResolvers)
-        foreach (var source in await resolver.ListForPageAsync(page.Id))
-        {
-            // Without a discriminator there is no value to substitute into the pattern.
-            var discriminator = resolver.GetDiscriminatorValue(source);
-            if (string.IsNullOrEmpty(discriminator))
-                continue;
-
-            entries.Add(new SitemapEntryDto
-            {
-                Path = PagePathAnalyzer.ResolveDynamicPath(page.Path, discriminator),
-                UpdatedAt = DateTimeResolver.MaxUpdatedAt(source.UpdatedAt, page.UpdatedAt)
-            });
-        }
-
-        return entries;
-    }
 }

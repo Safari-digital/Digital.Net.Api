@@ -1,5 +1,6 @@
 using Digital.Net.Cms.Context;
 using Digital.Net.Cms.Models;
+using Digital.Net.Cms.Models.Pages;
 using Digital.Net.Core.Entities.Context;
 using Digital.Net.Core.Entities.Models.Auth;
 using Digital.Net.Core.Entities.Models.Documents;
@@ -91,15 +92,15 @@ public class MutationTrackingInterceptorTest : UnitTest
     public async Task Create_TrackedEntity_InCmsContext_PersistsMutationInCmsSchema()
     {
         await using var ctx = CreateTrackedContext<CmsContext>();
-        var tag = new Tag { Name = $"tag-{TestId}" };
+        var page = new Page { Path = $"/mut-{TestId}-{Guid.NewGuid():N}"[..24] };
 
-        ctx.Add(tag);
+        ctx.Add(page);
         await ctx.SaveChangesAsync();
 
-        var mutation = await ReadMutation<CmsContext>(tag.Id);
+        var mutation = await ReadMutation<CmsContext>(page.Id);
         await Assert.That(mutation).IsNotNull();
         await Assert.That(mutation!.ChangeType).IsEqualTo(ChangeType.Created);
-        await Assert.That(mutation.EntityType).IsEqualTo(nameof(Tag));
+        await Assert.That(mutation.EntityType).IsEqualTo(nameof(Page));
     }
 
     [Test]

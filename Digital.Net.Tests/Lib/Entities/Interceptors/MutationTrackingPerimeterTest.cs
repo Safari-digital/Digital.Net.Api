@@ -1,5 +1,4 @@
 using Digital.Net.Cms.Models;
-using Digital.Net.Cms.Models.Articles;
 using Digital.Net.Cms.Models.Forms;
 using Digital.Net.Cms.Models.Medias;
 using Digital.Net.Cms.Models.Pages;
@@ -26,9 +25,7 @@ public class MutationTrackingPerimeterTest
     [Arguments(typeof(ApiKey))]
     [Arguments(typeof(Document))]
     [Arguments(typeof(Page))]
-    [Arguments(typeof(Article))]
     [Arguments(typeof(Media))]
-    [Arguments(typeof(Tag))]
     [Arguments(typeof(Form))]
     [Arguments(typeof(FormField))]
     [Arguments(typeof(FormSubmission))]
@@ -53,9 +50,6 @@ public class MutationTrackingPerimeterTest
     [Test]
     [Arguments(typeof(PageSheet))]
     [Arguments(typeof(PageOpenGraph))]
-    [Arguments(typeof(ArticleTag))]
-    [Arguments(typeof(ArticleMedia))]
-    [Arguments(typeof(ArticleRelated))]
     public async Task Pivots_are_IEntity_but_not_Entity(Type type)
     {
         await Assert.That(typeof(IEntity).IsAssignableFrom(type)).IsTrue();

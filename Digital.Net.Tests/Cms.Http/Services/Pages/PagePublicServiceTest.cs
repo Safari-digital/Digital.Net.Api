@@ -3,7 +3,6 @@ using Digital.Net.Cms.Http.Dto;
 using Digital.Net.Cms.Http.Exceptions;
 using Digital.Net.Cms.Http.Services;
 using Digital.Net.Cms.Models;
-using Digital.Net.Cms.Models.Articles;
 using Digital.Net.Cms.Models.Pages;
 using Digital.Net.Tests.Core;
 using Digital.Net.Tests.Core.Factories;
@@ -31,41 +30,7 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         );
     }
 
-    private static PageBuildPayload Build(string path, string? slug = null) =>
-        new() { Path = path, PageSlug = slug };
-
-    private (string pattern, string slug) SeedArticleAndTemplatedPage(
-        string articleTitle = "Hello World",
-        string articleDescription = "Greetings from prod",
-        string? pageTitle = "Blog: {{ article.title }}",
-        string? pageDescription = "Read: {{ article.description }}"
-    )
-    {
-        var slug = "tpl-" + Guid.NewGuid().ToString("N")[..8];
-        var pattern = $"/blog-{TestId}-{Guid.NewGuid().ToString("N")[..6]}/:slug";
-
-        var page = new Page
-        {
-            Path = pattern,
-            Published = true,
-            Indexed = true,
-            Title = pageTitle,
-            Description = pageDescription
-        };
-        _context.Pages.Add(page);
-        _context.SaveChanges();
-        _context.Articles.Add(new Article
-        {
-            Slug = slug,
-            Title = articleTitle,
-            Description = articleDescription,
-            Content = "body",
-            PublishedAt = DateTime.UtcNow,
-            PageId = page.Id
-        });
-        _context.SaveChanges();
-        return (pattern, slug);
-    }
+    private static PageBuildPayload Build(string path) => new() { Path = path };
 
     [Test]
     public async Task BuildPage_ShouldReturnPublishedPage()
@@ -104,149 +69,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         var result = await _service.BuildPublicPage(Build(string.Empty));
 
         await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPage_HydratesTemplateVariables_FromMatchingArticle()
-    {
-        var (pattern, slug) = SeedArticleAndTemplatedPage();
-
-        var result = await _service.BuildPublicPage(Build(pattern,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Title).IsEqualTo("Blog: Hello World");
-        await Assert.That(result.Value!.Description).IsEqualTo("Read: Greetings from prod");
-    }
-
-    [Test]
-    public async Task BuildPage_LeavesPlaceholdersUnchanged_WhenSourceFieldUnknown()
-    {
-        var (pattern, slug) = SeedArticleAndTemplatedPage(
-            pageTitle: "T",
-            pageDescription: "Junk: {{ article.unknown }}"
-        );
-
-        var result = await _service.BuildPublicPage(Build(pattern,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Description).IsEqualTo("Junk: {{ article.unknown }}");
-    }
-
-    [Test]
-    public async Task BuildPage_ReturnsInvalidPagePath_WhenTemplatedPage_ButArticleNotFound()
-    {
-        var pattern = $"/no-article-{TestId}/:slug";
-        _context.Pages.Add(new Page
-        {
-            Path = pattern,
-            Published = true,
-            Indexed = true,
-            Title = "Blog: {{ article.title }}"
-        });
-        _context.SaveChanges();
-
-        var result = await _service.BuildPublicPage(
-            Build(pattern,"no-such-article-" + Guid.NewGuid().ToString("N")[..8]));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPage_DoesNotHydrate_WhenPayloadMissesSlug()
-    {
-        // Page templatée + payload sans PageSlug : on retourne la page telle quelle, sans
-        // hydrater. Le client a déclaré le bon PageType, mais ne demande pas d'instance —
-        // utile pour récupérer le squelette de la page.
-        var pattern = $"/no-slug-{TestId}/:slug";
-        _context.Pages.Add(new Page
-        {
-            Path = pattern,
-            Published = true,
-            Indexed = true,
-            Title = "Blog: {{ article.title }}"
-        });
-        _context.SaveChanges();
-
-        var result = await _service.BuildPublicPage(Build(pattern));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Title).IsEqualTo("Blog: {{ article.title }}");
-    }
-
-    [Test]
-    public async Task BuildPage_ReturnsPage_WhenArticlePageIdMatches()
-    {
-        var slug = "match-" + Guid.NewGuid().ToString("N")[..8];
-        var page = _context.BuildTestPage(
-            path: $"/m-{TestId}-{Guid.NewGuid().ToString("N")[..6]}/:slug",
-            published: true
-        );
-        _context.BuildTestArticle(slug: slug, published: true, pageId: page.Id);
-
-        var result = await _service.BuildPublicPage(Build(page.Path,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-    }
-
-    [Test]
-    public async Task BuildPage_ReturnsInvalidPagePath_WhenArticlePageIdMismatches()
-    {
-        var slug = "shared-" + Guid.NewGuid().ToString("N")[..8];
-        var pageA = _context.BuildTestPage(
-            path: $"/a-{TestId}-{Guid.NewGuid().ToString("N")[..6]}/:slug",
-            published: true
-        );
-        var pageB = _context.BuildTestPage(
-            path: $"/b-{TestId}-{Guid.NewGuid().ToString("N")[..6]}/:slug",
-            published: true
-        );
-        _context.BuildTestArticle(slug: slug, published: true, pageId: pageA.Id);
-
-        var result = await _service.BuildPublicPage(Build(pageB.Path,slug));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPage_ReturnsInvalidPagePath_WhenArticleIsOrphan()
-    {
-        var slug = "orphan-" + Guid.NewGuid().ToString("N")[..8];
-        var page = _context.BuildTestPage(
-            path: $"/o-{TestId}-{Guid.NewGuid().ToString("N")[..6]}/:slug",
-            published: true
-        );
-        _context.BuildTestArticle(slug: slug, published: true, pageId: null);
-
-        var result = await _service.BuildPublicPage(Build(page.Path,slug));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPage_ReturnsInvalidPagePath_WhenArticleNotPublished()
-    {
-        var slug = "draft-" + Guid.NewGuid().ToString("N")[..8];
-        var page = _context.BuildTestPage(
-            path: $"/d-{TestId}-{Guid.NewGuid().ToString("N")[..6]}/:slug",
-            published: true
-        );
-        _context.BuildTestArticle(slug: slug, published: false, pageId: page.Id);
-
-        var result = await _service.BuildPublicPage(Build(page.Path,slug));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPage_ServesStaticPage_WhenPayloadProvidesAnUnknownSlug()
-    {
-        // A static page owns its path: an unresolvable slug does not turn it into a 404.
-        var path = "/static-pt-" + Guid.NewGuid().ToString("N")[..8];
-        _context.BuildTestPage(path, true);
-
-        var result = await _service.BuildPublicPage(Build(path, "some-slug"));
-
-        await Assert.That(result.HasError).IsFalse();
     }
 
     [Test]
@@ -320,45 +142,8 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         await Assert.That(result.Value!.OpenGraph[1].Content).IsEqualTo("Second desc");
     }
 
-    [Test]
-    public async Task BuildPage_HydratesOpenGraphContent_FromMatchingArticle()
-    {
-        var (pattern, slug) = SeedArticleAndTemplatedPage();
-        var page = _context.Pages.Single(p => p.Path == pattern);
-        SeedOpenGraphEntries(page.Id,
-            ("og:title", "{{ article.title }}"),
-            ("og:description", "About {{ article.description }}")
-        );
-
-        var result = await _service.BuildPublicPage(Build(pattern,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.OpenGraph[0].Content).IsEqualTo("Hello World");
-        await Assert.That(result.Value!.OpenGraph[1].Content).IsEqualTo("About Greetings from prod");
-    }
-
-    [Test]
-    public async Task BuildPage_LeavesOpenGraphPlaceholders_WhenPayloadMissesSlug()
-    {
-        var pattern = $"/og-no-slug-{TestId}/:slug";
-        _context.Pages.Add(new Page
-        {
-            Path = pattern,
-            Published = true,
-            Indexed = true
-        });
-        _context.SaveChanges();
-        var page = _context.Pages.Single(p => p.Path == pattern);
-        SeedOpenGraphEntries(page.Id, ("og:title", "{{ article.title }}"));
-
-        var result = await _service.BuildPublicPage(Build(pattern));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.OpenGraph[0].Content).IsEqualTo("{{ article.title }}");
-    }
-
-    private static PageSheetBuildPayload BuildSheet(Guid sheetId, string path, string? slug = null) =>
-        new() { SheetId = sheetId, Path = path, PageSlug = slug };
+    private static PageSheetBuildPayload BuildSheet(Guid sheetId, string path) =>
+        new() { SheetId = sheetId, Path = path };
 
     [Test]
     public async Task BuildPageSheets_ReturnsInheritedThenOwn_WithoutDuplicates()
@@ -377,42 +162,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         await Assert.That(result.Value!.Count).IsEqualTo(2);
         await Assert.That(result.Value!.Count(s => s.Id == inherited.Id)).IsEqualTo(1);
         await Assert.That(result.Value!.Select(s => s.Id)).IsEquivalentTo(new[] { own.Id, inherited.Id });
-    }
-
-    [Test]
-    public async Task BuildPageSheets_HydratesContent_FromMatchingArticle()
-    {
-        var (pattern, slug) = SeedArticleAndTemplatedPage();
-        var page = _context.Pages.Single(p => p.Path == pattern);
-        var sheet = _context.BuildTestSheet(
-            type: "html",
-            content: "<h1>{{ article.title }}</h1>",
-            published: true
-        );
-        _context.BuildTestPageSheet(page.Id, sheet.Id);
-
-        var result = await _service.BuildPublicPageSheets(Build(pattern, slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Single().Content).IsEqualTo("<h1>Hello World</h1>");
-    }
-
-    [Test]
-    public async Task BuildPageSheets_LeavesPlaceholders_WhenPayloadMissesSlug()
-    {
-        var (pattern, _) = SeedArticleAndTemplatedPage();
-        var page = _context.Pages.Single(p => p.Path == pattern);
-        var sheet = _context.BuildTestSheet(
-            type: "html",
-            content: "<h1>{{ article.title }}</h1>",
-            published: true
-        );
-        _context.BuildTestPageSheet(page.Id, sheet.Id);
-
-        var result = await _service.BuildPublicPageSheets(Build(pattern));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Single().Content).IsEqualTo("<h1>{{ article.title }}</h1>");
     }
 
     [Test]
@@ -468,34 +217,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
     }
 
     [Test]
-    public async Task BuildPageSheet_HydratesContent_FromMatchingArticle()
-    {
-        var slug = "art-" + Guid.NewGuid().ToString("N")[..8];
-        var (page, sheet) = SeedPageWithSheet(
-            "css",
-            ".author::before { content: '{{ article.title }}'; }",
-            dynamicPath: true
-        );
-        _context.Articles.Add(new Article
-        {
-            Slug = slug,
-            Title = "Hello World",
-            Description = "D",
-            Content = "C",
-            PublishedAt = DateTime.UtcNow,
-            PageId = page.Id
-        });
-        _context.SaveChanges();
-
-        var result = await _service.BuildPublicPageSheetResource(
-            BuildSheet(sheet.Id, page.Path,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value.contentType).IsEqualTo("text/css");
-        await Assert.That(result.Value.content).IsEqualTo(".author::before { content: 'Hello World'; }");
-    }
-
-    [Test]
     [Arguments("css", "text/css")]
     [Arguments("js", "application/javascript")]
     [Arguments("html", "text/html")]
@@ -519,22 +240,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         );
 
         var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheet.Id, page.Path));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value.content).IsEqualTo("<p>{{ article.title }}</p>");
-    }
-
-    [Test]
-    public async Task BuildPageSheet_LeavesPlaceholdersUnchanged_WhenPayloadMissesSlug()
-    {
-        var (page, sheet) = SeedPageWithSheet(
-            "html",
-            "<p>{{ article.title }}</p>",
-            dynamicPath: true
-        );
-
-        var result = await _service.BuildPublicPageSheetResource(
-            BuildSheet(sheet.Id, page.Path));
 
         await Assert.That(result.HasError).IsFalse();
         await Assert.That(result.Value.content).IsEqualTo("<p>{{ article.title }}</p>");
@@ -593,17 +298,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
     public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenPathEmpty()
     {
         var result = await _service.BuildPublicPageSheetResource(BuildSheet(Guid.NewGuid(), string.Empty));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenArticleNotFound()
-    {
-        var (page, sheet) = SeedPageWithSheet(dynamicPath: true);
-
-        var result = await _service.BuildPublicPageSheetResource(
-            BuildSheet(sheet.Id, page.Path,"ghost-" + Guid.NewGuid().ToString("N")[..8]));
 
         await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
     }
@@ -680,68 +374,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
 
         await Assert.That(result.HasError).IsFalse();
         await Assert.That(result.Value!.Title).IsEqualTo("long");
-    }
-
-    [Test]
-    public async Task BuildPage_FallsBackToTemplate_WhenNoDedicatedPage()
-    {
-        var (pattern, slug) = SeedArticleAndTemplatedPage();
-        var realPath = pattern.Replace(":slug", slug);
-
-        var result = await _service.BuildPublicPage(Build(realPath,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Title).IsEqualTo("Blog: Hello World");
-    }
-
-    [Test]
-    public async Task BuildPage_ServesDedicatedPage_WhenInterpolationSourceMissing()
-    {
-        var (_, dedicated) = SeedTemplateAndDedicatedPage(
-            templateTitle: "Blog: {{ article.title }}"
-        );
-
-        var result = await _service.BuildPublicPage(
-            Build(dedicated.Path,"ghost-" + Guid.NewGuid().ToString("N")[..8]));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Title).IsEqualTo("Blog: {{ article.title }}");
-    }
-
-    [Test]
-    public async Task BuildPage_HydratesInheritedValues_FromTemplateArticle()
-    {
-        var (template, dedicated) = SeedTemplateAndDedicatedPage(
-            templateTitle: "Blog: {{ article.title }}"
-        );
-        var slug = "child-" + Guid.NewGuid().ToString("N")[..8];
-        _context.Articles.Add(new Article
-        {
-            Slug = slug,
-            Title = "Hello World",
-            Description = "D",
-            Content = "C",
-            PublishedAt = DateTime.UtcNow,
-            PageId = template.Id
-        });
-        _context.SaveChanges();
-
-        var result = await _service.BuildPublicPage(Build(dedicated.Path,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Title).IsEqualTo("Blog: Hello World");
-    }
-
-    [Test]
-    public async Task BuildPage_ReturnsInvalidPagePath_WhenTemplateOnly_AndSourceMissing()
-    {
-        var (pattern, _) = SeedArticleAndTemplatedPage();
-        var realPath = pattern.Replace(":slug", "ghost-" + Guid.NewGuid().ToString("N")[..8]);
-
-        var result = await _service.BuildPublicPage(
-            Build(realPath,"ghost-" + Guid.NewGuid().ToString("N")[..8]));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
     }
 
     [Test]
@@ -882,32 +514,4 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
     }
 
-    [Test]
-    public async Task BuildPageSheet_HydratesTemplateSheet_FromTemplateArticle()
-    {
-        var (template, dedicated) = SeedTemplateAndDedicatedPage();
-        var sheet = _context.BuildTestSheet(
-            type: "html",
-            content: "<p>{{ article.title }}</p>",
-            published: true
-        );
-        _context.BuildTestPageSheet(template.Id, sheet.Id);
-        var slug = "sheet-" + Guid.NewGuid().ToString("N")[..8];
-        _context.Articles.Add(new Article
-        {
-            Slug = slug,
-            Title = "Hello World",
-            Description = "D",
-            Content = "C",
-            PublishedAt = DateTime.UtcNow,
-            PageId = template.Id
-        });
-        _context.SaveChanges();
-
-        var result = await _service.BuildPublicPageSheetResource(
-            BuildSheet(sheet.Id, dedicated.Path,slug));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value.content).IsEqualTo("<p>Hello World</p>");
-    }
 }

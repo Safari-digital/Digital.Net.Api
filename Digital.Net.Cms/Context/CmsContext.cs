@@ -1,5 +1,4 @@
 using Digital.Net.Cms.Models;
-using Digital.Net.Cms.Models.Articles;
 using Digital.Net.Cms.Models.Forms;
 using Digital.Net.Cms.Models.Medias;
 using Digital.Net.Cms.Models.Pages;
@@ -17,11 +16,6 @@ public class CmsContext(DbContextOptions<CmsContext> options) : DbContext(option
     static string IDigitalNetContext.Schema => Schema;
 
     public DbSet<Page> Pages { get; init; }
-    public DbSet<Article> Articles { get; init; }
-    public DbSet<ArticleTag> ArticleTags { get; init; }
-    public DbSet<ArticleMedia> ArticleMedia { get; init; }
-    public DbSet<ArticleRelated> ArticleRelated { get; init; }
-    public DbSet<Tag> Tags { get; init; }
     public DbSet<Sheet> Sheets { get; init; }
     public DbSet<PageSheet> PageSheets { get; init; }
     public DbSet<OpenGraphEntry> OpenGraphEntries { get; init; }
@@ -39,7 +33,6 @@ public class CmsContext(DbContextOptions<CmsContext> options) : DbContext(option
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.HasDefaultSchema(Schema);
-        builder.BuildArticle();
         builder.BuildMediaVariant();
         builder.BuildFormField();
         builder.BuildFormSubmission();
