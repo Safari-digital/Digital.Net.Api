@@ -35,7 +35,57 @@ public class PageCrudServiceTest : UnitTest, IAsyncInitializer
 
         var dispatcher = new PatchDispatcher<Page>([openGraphResolver]);
         var crudService = new CrudService<CmsContext, Page>(_context, dispatcher);
-        _service = new PageCrudService(crudService);
+        _service = new PageCrudService(_context, crudService);
+    }
+
+    /// <summary>
+    ///     A page is what holds content together, so deleting it takes the sheets it owns. Only the pivot
+    ///     row cascades at the database level, which would otherwise leave sheets nothing renders.
+    /// </summary>
+    [Test]
+    public async Task DeletePage_TakesTheSheetsItOwns()
+    {
+        var page = new Page { Path = $"/owned-{TestId}-{Guid.NewGuid():N}"[..40], Published = true };
+        var sheet = new Sheet { Name = $"own-{TestId}", Type = "html", Content = "<p>x</p>", Published = true };
+        _context.Pages.Add(page);
+        _context.Sheets.Add(sheet);
+        await _context.SaveChangesAsync();
+        _context.PageSheets.Add(new PageSheet { ParentId = page.Id, ChildId = sheet.Id, Order = 0 });
+        await _context.SaveChangesAsync();
+
+        var result = await _service.DeletePage(page.Id);
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(await _context.Pages.AnyAsync(p => p.Id == page.Id)).IsFalse();
+        await Assert.That(await _context.Sheets.AnyAsync(s => s.Id == sheet.Id)).IsFalse();
+    }
+
+    /// <summary>
+    ///     Inheritance is why the cascade stops at shared sheets: one hung on a template is rendered by
+    ///     every page under it, so deleting one of those pages must not empty the others.
+    /// </summary>
+    [Test]
+    public async Task DeletePage_SparesASheetStillAttachedElsewhere()
+    {
+        var doomed = new Page { Path = $"/gone-{TestId}-{Guid.NewGuid():N}"[..40], Published = true };
+        var keeper = new Page { Path = $"/kept-{TestId}-{Guid.NewGuid():N}"[..40], Published = true };
+        var shared = new Sheet { Name = $"shared-{TestId}", Type = "css", Content = "body{}", Published = true };
+        _context.Pages.AddRange(doomed, keeper);
+        _context.Sheets.Add(shared);
+        await _context.SaveChangesAsync();
+        _context.PageSheets.AddRange(
+            new PageSheet { ParentId = doomed.Id, ChildId = shared.Id, Order = 0 },
+            new PageSheet { ParentId = keeper.Id, ChildId = shared.Id, Order = 0 }
+        );
+        await _context.SaveChangesAsync();
+
+        var result = await _service.DeletePage(doomed.Id);
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(await _context.Sheets.AnyAsync(s => s.Id == shared.Id)).IsTrue();
+        await Assert.That(
+            await _context.PageSheets.AnyAsync(ps => ps.ParentId == keeper.Id && ps.ChildId == shared.Id)
+        ).IsTrue();
     }
 
     private static JsonElement BuildPatch(params object[] ops) => JsonSerializer.SerializeToElement(ops);

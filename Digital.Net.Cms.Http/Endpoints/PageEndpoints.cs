@@ -67,7 +67,13 @@ public static class PageEndpoints
 
         controller.MapCrudGet<CmsContext, Page, PageDto>();
         controller.MapPaginationGet<CmsContext, Page, PageListDto, PageQuery>(filter: PaginationFilter);
-        controller.MapCrudDelete<CmsContext, Page>();
+        controller
+            .MapDelete("{id:guid}", DeletePage)
+            .WithSummary("Delete")
+            .WithDescription(
+                "Deletes a page and the sheets it owns. A sheet still attached to another page — one " +
+                "inherited from a template — is detached rather than deleted."
+            );
         controller
             .MapPatch("{id:guid}", UpdatePage)
             .WithSummary("Patch")
@@ -191,6 +197,22 @@ public static class PageEndpoints
             return TypedResults.NotFound(result);
         if (result.HasErrorOfType<EntityValidationException>())
             return TypedResults.BadRequest(result);
+        if (result.HasError)
+            return TypedResults.InternalServerError(result);
+
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Results<Ok<Result>, NotFound<Result>, InternalServerError<Result>>>
+        DeletePage(
+            Guid id,
+            PageCrudService pageCrudService,
+            CancellationToken ct
+        )
+    {
+        var result = await pageCrudService.DeletePage(id, ct);
+        if (result.HasErrorOfType<ResourceNotFoundException>())
+            return TypedResults.NotFound(result);
         if (result.HasError)
             return TypedResults.InternalServerError(result);
 
