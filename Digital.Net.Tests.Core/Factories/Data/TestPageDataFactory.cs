@@ -1,3 +1,4 @@
+using System;
 using Digital.Net.Cms.Context;
 using Digital.Net.Cms.Models.Pages;
 using Digital.Net.Lib.Random;
@@ -10,14 +11,16 @@ public static class TestPageFactory
         this CmsContext context,
         string? path = null,
         bool published = false,
-        bool? indexed = true
+        bool? indexed = true,
+        DateTime? publishedAt = null
     )
     {
         var page = new Page
         {
             Path = path ?? $"/{Randomizer.GenerateRandomString(Randomizer.AnyLetterOrNumber, 10)}",
             Published = published,
-            Indexed = indexed!.Value
+            Indexed = indexed!.Value,
+            PublishedAt = publishedAt
         };
         context.Pages.Add(page);
         context.SaveChanges();

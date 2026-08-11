@@ -38,6 +38,39 @@ public class SitemapServiceTest : UnitTest, IAsyncInitializer
     }
 
     [Test]
+    public async Task GetEntries_ShouldExcludePage_WhenItsDateHasNotCome()
+    {
+        var path = "/" + Unique("later");
+        _context.BuildTestPage(path: path, published: true, indexed: true, publishedAt: DateTime.UtcNow.AddDays(1));
+
+        var entries = await _service.GetEntriesAsync();
+
+        await Assert.That(entries.Any(e => e.Path == path)).IsFalse();
+    }
+
+    [Test]
+    public async Task GetEntries_ShouldIncludePage_WhenItsDateHasCome()
+    {
+        var path = "/" + Unique("due");
+        _context.BuildTestPage(path: path, published: true, indexed: true, publishedAt: DateTime.UtcNow.AddDays(-1));
+
+        var entries = await _service.GetEntriesAsync();
+
+        await Assert.That(entries.Any(e => e.Path == path)).IsTrue();
+    }
+
+    [Test]
+    public async Task GetEntries_ShouldExcludePage_WhenDueButNotPublished()
+    {
+        var path = "/" + Unique("draft");
+        _context.BuildTestPage(path: path, published: false, indexed: true, publishedAt: DateTime.UtcNow.AddDays(-1));
+
+        var entries = await _service.GetEntriesAsync();
+
+        await Assert.That(entries.Any(e => e.Path == path)).IsFalse();
+    }
+
+    [Test]
     public async Task GetEntries_ShouldExcludeUnpublishedPage()
     {
         var path = "/" + Unique("unpub");

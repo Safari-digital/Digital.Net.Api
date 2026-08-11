@@ -17,7 +17,8 @@ public class SitemapService(CmsContext context)
     public async Task<List<SitemapEntryDto>> GetEntriesAsync() =>
         await context.Pages
             .AsNoTracking()
-            .Where(p => p.Published && p.Indexed && !p.Path.Contains(":"))
+            .Where(PageVisibility.IsLive(DateTime.UtcNow))
+            .Where(p => p.Indexed && !p.Path.Contains(":"))
             .Select(p => new SitemapEntryDto { Path = p.Path, UpdatedAt = p.UpdatedAt })
             .ToListAsync();
 }

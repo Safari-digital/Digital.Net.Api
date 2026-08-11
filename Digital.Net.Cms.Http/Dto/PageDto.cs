@@ -9,6 +9,7 @@ public class PageDto
     public Guid Id { get; init; }
     public string Path { get; set; } = string.Empty;
     public bool Published { get; set; }
+    public DateTime? PublishedAt { get; set; }
     public bool Indexed { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }

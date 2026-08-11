@@ -199,7 +199,8 @@ public class PagePublicService(
 
         var dedicated = await context.Pages
             .AsNoTracking()
-            .Where(p => p.Path == payload.Path && p.Published)
+            .Where(PageVisibility.IsLive(DateTime.UtcNow))
+            .Where(p => p.Path == payload.Path)
             .FirstOrDefaultAsync(ct);
 
         // A dynamic path is a pattern, not an address: a template is only ever an inheritance source,

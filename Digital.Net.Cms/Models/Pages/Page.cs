@@ -22,6 +22,15 @@ public class Page : Entity
     [Sortable]
     public bool Published { get; set; }
 
+    /// <summary>
+    ///     When the page starts being served, or null to serve it as soon as it is published. Publication
+    ///     is the two together: a page held back by its date is not public, and neither is one whose date
+    ///     has come while <see cref="Published" /> is false.
+    /// </summary>
+    [Column("PublishedAt")]
+    [Sortable]
+    public DateTime? PublishedAt { get; set; }
+
     [Column("Indexed")]
     [Sortable]
     public bool Indexed { get; set; } = true;

@@ -15,6 +15,9 @@ public class PageTemplateResolver(CmsContext context)
         if (string.IsNullOrWhiteSpace(path) || PagePathAnalyzer.HasDynamicSlug(path))
             return null;
 
+        // Published only, deliberately not PageVisibility.IsLive: a template is inherited from, never
+        // served, so holding one back by its date would strip the SEO off every page it covers rather
+        // than schedule anything.
         var candidates = await context.Pages
             .AsNoTracking()
             .Where(p => p.Published && p.Path.Contains(":"))

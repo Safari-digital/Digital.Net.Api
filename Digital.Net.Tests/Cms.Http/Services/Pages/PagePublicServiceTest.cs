@@ -45,6 +45,29 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
     }
 
     [Test]
+    public async Task BuildPage_ShouldReturnInvalidPagePath_WhenItsDateHasNotCome()
+    {
+        var path = "/later-" + Guid.NewGuid().ToString("N")[..8];
+        _context.BuildTestPage(path, true, publishedAt: DateTime.UtcNow.AddDays(1));
+
+        var result = await _service.BuildPublicPage(Build(path));
+
+        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
+    }
+
+    [Test]
+    public async Task BuildPage_ShouldReturnPage_WhenItsDateHasCome()
+    {
+        var path = "/due-" + Guid.NewGuid().ToString("N")[..8];
+        _context.BuildTestPage(path, true, publishedAt: DateTime.UtcNow.AddDays(-1));
+
+        var result = await _service.BuildPublicPage(Build(path));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value).IsNotNull();
+    }
+
+    [Test]
     public async Task BuildPage_ShouldReturnInvalidPagePath_WhenPageIsNotPublished()
     {
         var path = "/unpub-" + Guid.NewGuid().ToString("N")[..8];
