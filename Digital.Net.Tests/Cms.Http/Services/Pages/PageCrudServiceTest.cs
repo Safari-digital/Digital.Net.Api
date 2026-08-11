@@ -61,30 +61,34 @@ public class PageCrudServiceTest : UnitTest, IAsyncInitializer
     }
 
     /// <summary>
-    ///     Inheritance is why the cascade stops at shared sheets: one hung on a template is rendered by
-    ///     every page under it, so deleting one of those pages must not empty the others.
+    ///     Inheritance holds no pivot row: a page inheriting from a template does not own the template's
+    ///     sheets, the union being computed at read time. Deleting it therefore cannot reach them — and
+    ///     the converse holds, deleting the template takes its sheets away from everything below it.
     /// </summary>
     [Test]
-    public async Task DeletePage_SparesASheetStillAttachedElsewhere()
+    public async Task DeletePage_LeavesTheSheetsItOnlyInherits_ToTheirTemplate()
     {
-        var doomed = new Page { Path = $"/gone-{TestId}-{Guid.NewGuid():N}"[..40], Published = true };
-        var keeper = new Page { Path = $"/kept-{TestId}-{Guid.NewGuid():N}"[..40], Published = true };
-        var shared = new Sheet { Name = $"shared-{TestId}", Type = "css", Content = "body{}", Published = true };
-        _context.Pages.AddRange(doomed, keeper);
-        _context.Sheets.Add(shared);
+        var prefix = $"/inherit-{TestId}-{Guid.NewGuid().ToString("N")[..6]}";
+        var template = new Page { Path = $"{prefix}/:slug", Published = true };
+        var child = new Page { Path = $"{prefix}/one", Published = true };
+        var templateSheet = new Sheet { Name = $"tpl-{TestId}", Type = "css", Content = "body{}", Published = true };
+        var ownSheet = new Sheet { Name = $"own-{TestId}", Type = "html", Content = "<p>x</p>", Published = true };
+        _context.Pages.AddRange(template, child);
+        _context.Sheets.AddRange(templateSheet, ownSheet);
         await _context.SaveChangesAsync();
         _context.PageSheets.AddRange(
-            new PageSheet { ParentId = doomed.Id, ChildId = shared.Id, Order = 0 },
-            new PageSheet { ParentId = keeper.Id, ChildId = shared.Id, Order = 0 }
+            new PageSheet { ParentId = template.Id, ChildId = templateSheet.Id, Order = 0 },
+            new PageSheet { ParentId = child.Id, ChildId = ownSheet.Id, Order = 0 }
         );
         await _context.SaveChangesAsync();
 
-        var result = await _service.DeletePage(doomed.Id);
+        var result = await _service.DeletePage(child.Id);
 
         await Assert.That(result.HasError).IsFalse();
-        await Assert.That(await _context.Sheets.AnyAsync(s => s.Id == shared.Id)).IsTrue();
+        await Assert.That(await _context.Sheets.AnyAsync(s => s.Id == ownSheet.Id)).IsFalse();
+        await Assert.That(await _context.Sheets.AnyAsync(s => s.Id == templateSheet.Id)).IsTrue();
         await Assert.That(
-            await _context.PageSheets.AnyAsync(ps => ps.ParentId == keeper.Id && ps.ChildId == shared.Id)
+            await _context.PageSheets.AnyAsync(ps => ps.ParentId == template.Id && ps.ChildId == templateSheet.Id)
         ).IsTrue();
     }
 

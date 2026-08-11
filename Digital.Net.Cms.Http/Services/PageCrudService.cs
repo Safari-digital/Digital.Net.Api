@@ -15,11 +15,19 @@ public class PageCrudService(
 {
     /// <summary>
     ///     Deletes a page and the sheets it owns: a page is what holds content together, so its content
-    ///     goes with it rather than lingering as rows nothing renders.
+    ///     goes with it rather than lingering as rows nothing renders. Only the pivot cascades at the
+    ///     database level, which is what used to leave them behind.
     ///     <para>
-    ///         A sheet still attached to another page survives. Inheritance is the reason — a sheet hung
-    ///         on a template is rendered by every page under it, and deleting one of those pages must not
-    ///         empty the others.
+    ///         Every sheet of the page goes, with no exception to make: <see cref="PageSheet" /> is
+    ///         declared <see cref="Ownership.Cascade" />, and in that mode the pivot resolver never links
+    ///         an existing sheet to a second page — it always creates a new one. A sheet therefore belongs
+    ///         to exactly one page.
+    ///     </para>
+    ///     <para>
+    ///         Inheritance does not change that: a page inheriting from a template holds no pivot row
+    ///         towards the template's sheets, the union being computed at read time. Deleting an
+    ///         inheriting page cannot reach them — and deleting the template does take its sheets away
+    ///         from every page that was inheriting them.
     ///     </para>
     ///     <para>
     ///         The sheets go through the tracker rather than ExecuteDelete, so their mutations are audited
@@ -37,19 +45,10 @@ public class PageCrudService(
                 .Select(ps => ps.ChildId)
                 .ToListAsync(ct);
 
-            var shared = await context.PageSheets
-                .AsNoTracking()
-                .Where(ps => ps.ParentId != pageId && owned.Contains(ps.ChildId))
-                .Select(ps => ps.ChildId)
-                .ToListAsync(ct);
-
             result = await crudService.Delete(pageId);
-            if (result.HasError) return result;
+            if (result.HasError || owned.Count == 0) return result;
 
-            var doomed = owned.Except(shared).ToList();
-            if (doomed.Count == 0) return result;
-
-            var sheets = await context.Sheets.Where(s => doomed.Contains(s.Id)).ToListAsync(ct);
+            var sheets = await context.Sheets.Where(s => owned.Contains(s.Id)).ToListAsync(ct);
             context.Sheets.RemoveRange(sheets);
             await context.SaveChangesAsync(ct);
         }
