@@ -21,8 +21,9 @@ public static class CmsInjector
         builder.AddDatabaseContext<CmsContext>(
             builder.Configuration.GetOrThrow<string>(CoreSettings.ConnectionStringKey));
 
-        // Article still lives in CmsContext, so the CMS declares its own sources. A client app declares
-        // its context the same way — the mechanism does not change when Article moves out.
+        // No entity of this context declares [TemplateHost] any more — interpolation sources are a
+        // client concern. The call stays because the scan is per context: a client app registers its
+        // own the same way, and the CMS would pick one up again if it ever declared one.
         builder.AddTemplateSources<CmsContext>();
 
         builder.Services

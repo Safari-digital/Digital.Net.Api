@@ -9,34 +9,15 @@ namespace Digital.Net.Cms.Http.Services;
 
 public class SitemapService(CmsContext context)
 {
-    public async Task<List<SitemapEntryDto>> GetEntriesAsync()
-    {
-        var pages = await context.Pages
+    /// <summary>
+    ///     Every published, indexed page that has a real address. A path carrying a dynamic slug is a
+    ///     template — a pattern, not a page — so it has nothing of its own to list; the pages it covers
+    ///     each own their path and appear here on their own account.
+    /// </summary>
+    public async Task<List<SitemapEntryDto>> GetEntriesAsync() =>
+        await context.Pages
             .AsNoTracking()
-            .Where(p => p.Published)
+            .Where(p => p.Published && p.Indexed && !p.Path.Contains(":"))
+            .Select(p => new SitemapEntryDto { Path = p.Path, UpdatedAt = p.UpdatedAt })
             .ToListAsync();
-
-        // A published dedicated page owns its path: it decides its own sitemap presence,
-        // so template expansions never re-list it (even when it opted out via Indexed).
-        var dedicatedPaths = pages
-            .Where(p => !PagePathAnalyzer.HasDynamicSlug(p.Path))
-            .Select(p => p.Path)
-            .ToHashSet();
-
-        var entries = new List<SitemapEntryDto>();
-        var seen = new HashSet<string>();
-        foreach (var page in pages.Where(p => p.Indexed))
-        {
-            if (!PagePathAnalyzer.HasDynamicSlug(page.Path))
-            {
-                if (seen.Add(page.Path))
-                    entries.Add(new SitemapEntryDto { Path = page.Path, UpdatedAt = page.UpdatedAt });
-                continue;
-            }
-            // A pattern is a template, not a page: it has nothing of its own to list.
-        }
-
-        return entries;
-    }
-
 }

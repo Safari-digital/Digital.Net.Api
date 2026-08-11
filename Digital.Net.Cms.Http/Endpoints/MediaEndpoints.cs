@@ -59,9 +59,9 @@ public static class MediaEndpoints
             .MapGet("labels", GetMediaLabels)
             .WithSummary("GetMediaLabels")
             .WithDescription(
-                "Returns the distinct, alphabetically-sorted list of labels currently in use across all " +
-                "ArticleMedia pivots. Optional 'search' querystring narrows the result with a " +
-                "case-insensitive LIKE filter."
+                "Returns the distinct, alphabetically-sorted list of media labels known to the CMS. " +
+                "Always empty today: labels live on the pivots of whichever application owns them, and " +
+                "none belongs to this library since Article left it."
             );
 
         userRoutes
