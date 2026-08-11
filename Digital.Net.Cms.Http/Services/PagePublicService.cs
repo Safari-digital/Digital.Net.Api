@@ -128,7 +128,11 @@ public class PagePublicService(
 
             result.Value = new PagePublicDto(page)
             {
+                // An entry left empty by its own chain is dropped rather than served blank. That is what
+                // makes an interpolated entry optional: a template can offer og:image to every page it
+                // covers, and the pages whose source has none simply do not carry the tag.
                 OpenGraph = openGraph
+                    .Where(e => !string.IsNullOrWhiteSpace(e.Content))
                     .Select(e => new OpenGraphEntryPublicDto { Property = e.Property, Content = e.Content })
                     .ToList()
             };

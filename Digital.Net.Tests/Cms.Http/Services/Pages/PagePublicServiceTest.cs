@@ -146,6 +146,20 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
     }
 
     [Test]
+    public async Task BuildPage_DropsAnOpenGraphEntry_LeftEmptyByItsSource()
+    {
+        var path = "/og-blank-" + Guid.NewGuid().ToString("N")[..8];
+        var page = _context.BuildTestPage(path, true);
+        SeedOpenGraphEntries(page.Id, ("og:title", "Rempli"), ("og:image", "   "));
+
+        var result = await _service.BuildPublicPage(Build(path));
+
+        // What makes an interpolated entry optional: the template offers it to every page it covers,
+        // and a page whose source has nothing to put in it does not carry the tag at all.
+        await Assert.That(result.Value!.OpenGraph.Select(e => e.Property)).IsEquivalentTo(new[] { "og:title" });
+    }
+
+    [Test]
     public async Task BuildPage_IncludesOpenGraphEntries_OrderedByPivot()
     {
         var path = "/og-list-" + Guid.NewGuid().ToString("N")[..8];
