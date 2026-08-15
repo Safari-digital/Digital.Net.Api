@@ -1,8 +1,5 @@
 namespace Digital.Net.Lib.Environment;
 
-/// <summary>
-///     A class to get the current environment of the application.
-/// </summary>
 public static class AspNetEnv
 {
     public const string Test = "Test";

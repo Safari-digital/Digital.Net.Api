@@ -7,7 +7,6 @@ public static class PredicateBuilder
     /// <summary>
     ///     Returns a base predicate.
     /// </summary>
-    /// <returns>A base predicate.</returns>
     public static Expression<Func<T, bool>> New<T>() => x => true;
 
     /// <summary>

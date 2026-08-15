@@ -20,12 +20,19 @@ public static class TestUserFactory
             Username = userDto?.Username ?? Randomizer.GenerateRandomString(Randomizer.AnyLetter, 20),
             Login = userDto?.Login ?? Randomizer.GenerateRandomString(Randomizer.AnyLetterOrNumber, 12),
             Password = UserPassword.Hash(TestUserPassword),
-            Email = userDto?.Email ?? Randomizer.GenerateRandomEmail(),
+            Email = userDto?.Email ?? GenerateRandomEmail(),
             IsActive = userDto?.IsActive ?? true,
             IsAdmin = userDto?.IsAdmin ?? false
         };
         context.Users.Add(user);
         context.SaveChanges();
         return user;
+    }
+
+    private static string GenerateRandomEmail(string? domain = null, string? topLevelDomain = null)
+    {
+        domain ??= Randomizer.GenerateRandomString(Randomizer.SmallLetters, 10);
+        topLevelDomain ??= Randomizer.GenerateRandomString(Randomizer.SmallLetters, 3);
+        return $"{Randomizer.GenerateRandomString(Randomizer.SmallLetters, 10)}@{domain}.{topLevelDomain}";
     }
 }

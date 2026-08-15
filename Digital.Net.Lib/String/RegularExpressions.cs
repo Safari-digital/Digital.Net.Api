@@ -2,9 +2,6 @@ using System.Text.RegularExpressions;
 
 namespace Digital.Net.Lib.String;
 
-/// <summary>
-///     Collection of regular expressions for string manipulation.
-/// </summary>
 public static partial class RegularExpressions
 {
     [GeneratedRegex(UsernamePattern)]

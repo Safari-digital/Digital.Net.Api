@@ -1,8 +1,5 @@
 namespace Digital.Net.Lib.Messages;
 
-/// <summary>
-///     A class to hold the result of a message. Can be created using either an exception or an enum.
-/// </summary>
 public class Result
 {
     public List<ResultMessage> Errors { get; init; } = [];

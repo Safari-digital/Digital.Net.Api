@@ -19,24 +19,10 @@ public static class Randomizer
     /// </summary>
     /// <param name="chars">The characters to use for the random string.</param>
     /// <param name="length">The length of the random string.</param>
-    /// <returns>A random string of the specified length using the specified characters.</returns>
     public static string GenerateRandomString(string? chars = null, int? length = null)
     {
         chars ??= AnyCharacter;
         length ??= RandomNumberGenerator.GetInt32(1, 128);
         return new string(RandomNumberGenerator.GetItems<char>(chars, length.Value));
-    }
-
-    /// <summary>
-    ///     Generates a random email address.
-    /// </summary>
-    /// <param name="domain">The domain of the email address.</param>
-    /// <param name="topLevelDomain">The top-level domain of the email address.</param>
-    /// <returns>A random email address.</returns>
-    public static string GenerateRandomEmail(string? domain = null, string? topLevelDomain = null)
-    {
-        domain ??= GenerateRandomString(SmallLetters, 10);
-        topLevelDomain ??= GenerateRandomString(SmallLetters, 3);
-        return $"{GenerateRandomString(SmallLetters, 10)}@{domain}.{topLevelDomain}";
     }
 }

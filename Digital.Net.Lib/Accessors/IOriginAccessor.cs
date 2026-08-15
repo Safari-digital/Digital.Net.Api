@@ -1,8 +1,5 @@
 namespace Digital.Net.Lib.Accessors;
 
-/// <summary>
-///     Expose the request origin (IP address and user agent).
-/// </summary>
 public interface IOriginAccessor
 {
     /// <summary>
