@@ -193,11 +193,11 @@ public static class FormEndpoints
     )
     {
         if (!string.IsNullOrEmpty(query.Name))
-            predicate = predicate.Add(x => x.Name.StartsWith(query.Name));
+            predicate = predicate.And(x => x.Name.StartsWith(query.Name));
         if (query.Published.HasValue)
-            predicate = predicate.Add(x => x.Published == query.Published);
+            predicate = predicate.And(x => x.Published == query.Published);
         if (!string.IsNullOrEmpty(query.Path))
-            predicate = predicate.Add(x => x.Path == query.Path);
+            predicate = predicate.And(x => x.Path == query.Path);
         return predicate;
     }
 
@@ -207,7 +207,7 @@ public static class FormEndpoints
     )
     {
         if (query.FormId.HasValue)
-            predicate = predicate.Add(x => x.FormId == query.FormId);
+            predicate = predicate.And(x => x.FormId == query.FormId);
         return predicate;
     }
 }

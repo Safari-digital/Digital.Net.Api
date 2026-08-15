@@ -309,13 +309,13 @@ public static class UserEndpoints
     )
     {
         if (!string.IsNullOrEmpty(query.Username))
-            predicate = predicate.Add(x => EF.Functions.Like(x.Username, $"{EFCoreUtils.EscapeLike(query.Username)}%"));
+            predicate = predicate.And(x => EF.Functions.Like(x.Username, $"{EFCoreUtils.EscapeLike(query.Username)}%"));
         if (!string.IsNullOrEmpty(query.Email))
-            predicate = predicate.Add(x => x.Email.StartsWith(query.Email));
+            predicate = predicate.And(x => x.Email.StartsWith(query.Email));
         if (query.IsActive.HasValue)
-            predicate = predicate.Add(x => x.IsActive == query.IsActive);
+            predicate = predicate.And(x => x.IsActive == query.IsActive);
         if (query.IsAdmin.HasValue)
-            predicate = predicate.Add(x => x.IsAdmin == query.IsAdmin);
+            predicate = predicate.And(x => x.IsAdmin == query.IsAdmin);
         return predicate;
     }
 
@@ -382,13 +382,13 @@ public static class UserEndpoints
     )
     {
         if (query.Type.HasValue)
-            predicate = predicate.Add(x => x.Type == query.Type);
+            predicate = predicate.And(x => x.Type == query.Type);
         if (query.Success.HasValue)
-            predicate = predicate.Add(x => x.Success == query.Success);
+            predicate = predicate.And(x => x.Success == query.Success);
         if (query.UserId.HasValue)
-            predicate = predicate.Add(x => x.UserId == query.UserId);
+            predicate = predicate.And(x => x.UserId == query.UserId);
         if (!string.IsNullOrEmpty(query.IpAddress))
-            predicate = predicate.Add(x => x.IpAddress == query.IpAddress);
+            predicate = predicate.And(x => x.IpAddress == query.IpAddress);
         return predicate;
     }
 }

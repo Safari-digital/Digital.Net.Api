@@ -241,11 +241,11 @@ public static class PageEndpoints
     )
     {
         if (!string.IsNullOrEmpty(query.Path))
-            predicate = predicate.Add(x => x.Path.StartsWith(query.Path));
+            predicate = predicate.And(x => x.Path.StartsWith(query.Path));
         if (query.Published.HasValue)
-            predicate = predicate.Add(x => x.Published == query.Published);
+            predicate = predicate.And(x => x.Published == query.Published);
         if (query.Indexed.HasValue)
-            predicate = predicate.Add(x => x.Indexed == query.Indexed);
+            predicate = predicate.And(x => x.Indexed == query.Indexed);
         return predicate;
     }
 }

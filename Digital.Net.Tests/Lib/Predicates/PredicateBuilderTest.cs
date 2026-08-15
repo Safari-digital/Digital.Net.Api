@@ -19,7 +19,7 @@ public class PredicateBuilderTest : UnitTest
     {
         Expression<Func<int, bool>> expr1 = x => x > 5;
         Expression<Func<int, bool>> expr2 = x => x < 10;
-        var combinedExpression = expr1.Add(expr2);
+        var combinedExpression = expr1.And(expr2);
         var compiledExpression = combinedExpression.Compile();
         await Assert.That(compiledExpression(7)).IsTrue();
         await Assert.That(compiledExpression(4)).IsFalse();

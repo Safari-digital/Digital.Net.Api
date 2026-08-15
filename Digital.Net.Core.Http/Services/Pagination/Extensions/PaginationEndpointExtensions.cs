@@ -95,13 +95,13 @@ public static class PaginationEndpointExtensions
         where T : Entity
     {
         if (query.CreatedFrom.HasValue)
-            predicate = predicate.Add(x => x.CreatedAt >= query.CreatedFrom);
+            predicate = predicate.And(x => x.CreatedAt >= query.CreatedFrom);
         if (query.UpdatedFrom.HasValue)
-            predicate = predicate.Add(x => x.UpdatedAt >= query.UpdatedFrom);
+            predicate = predicate.And(x => x.UpdatedAt >= query.UpdatedFrom);
         if (query.CreatedTo is not null)
-            predicate = predicate.Add(x => x.CreatedAt <= query.CreatedTo);
+            predicate = predicate.And(x => x.CreatedAt <= query.CreatedTo);
         if (query.UpdatedTo is not null)
-            predicate = predicate.Add(x => x.UpdatedAt <= query.UpdatedTo);
+            predicate = predicate.And(x => x.UpdatedAt <= query.UpdatedTo);
         return predicate;
     }
 }

@@ -45,9 +45,9 @@ public static class ConfigValueEndpoints
     )
     {
         if (!string.IsNullOrEmpty(query.Name))
-            predicate = predicate.Add(x => EF.Functions.Like(x.Name, $"%{EFCoreUtils.EscapeLike(query.Name)}%"));
+            predicate = predicate.And(x => EF.Functions.Like(x.Name, $"%{EFCoreUtils.EscapeLike(query.Name)}%"));
         if (query.Type.HasValue)
-            predicate = predicate.Add(x => x.Type == query.Type.Value);
+            predicate = predicate.And(x => x.Type == query.Type.Value);
         return predicate;
     }
 }

@@ -332,9 +332,9 @@ public static class MediaEndpoints
     {
         var predicate = PredicateBuilder.New<Media>().ApplyDateRange(query);
         if (!string.IsNullOrEmpty(query.Name))
-            predicate = predicate.Add(x => x.Name.StartsWith(query.Name));
+            predicate = predicate.And(x => x.Name.StartsWith(query.Name));
         if (query.Published.HasValue)
-            predicate = predicate.Add(x => x.Published == query.Published);
+            predicate = predicate.And(x => x.Published == query.Published);
         return predicate;
     }
 }

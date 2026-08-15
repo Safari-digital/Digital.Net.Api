@@ -10,16 +10,23 @@ public static class PredicateBuilder
     public static Expression<Func<T, bool>> New<T>() => x => true;
 
     /// <summary>
-    ///     Combines two predicates with an OR operator.
+    ///     Combines two predicates with an AND operator.
     /// </summary>
-    /// <param name="expr1">The first predicate.</param>
-    /// <param name="expr2">The second predicate.</param>
-    /// <typeparam name="T">The type of the predicate.</typeparam>
-    /// <returns>The combined predicate.</returns>
-    public static Expression<Func<T, bool>> Add<T>(this Expression<Func<T, bool>> expr1,
-        Expression<Func<T, bool>> expr2)
+    /// <param name="left">The first predicate.</param>
+    /// <param name="right">The second predicate.</param>
+    /// <typeparam name="T"></typeparam>
+    public static Expression<Func<T, bool>> And<T>(this Expression<Func<T, bool>> left, Expression<Func<T, bool>> right)
     {
-        var invokedExpr = Expression.Invoke(expr2, expr1.Parameters);
-        return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(expr1.Body, invokedExpr), expr1.Parameters);
+        var parameter = left.Parameters[0];
+        var rightBody = new ReplaceParameterVisitor(right.Parameters[0], parameter).Visit(right.Body);
+        return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left.Body, rightBody), parameter);
+    }
+
+    private sealed class ReplaceParameterVisitor(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            return node == from ? to : node;
+        }
     }
 }
