@@ -1,6 +1,6 @@
 using System.Text;
 using System.Xml.Linq;
-using Digital.Net.Core.Services.Documents.Extensions;
+using Digital.Net.Core.Services.Documents.Utils;
 
 namespace Digital.Net.Tests.Core.Services.Documents;
 

@@ -4,15 +4,15 @@ using System.Xml.Linq;
 using Digital.Net.Core.Entities.Models.Documents;
 using SixLabors.ImageSharp;
 
-namespace Digital.Net.Core.Services.Documents;
+namespace Digital.Net.Core.Services.Documents.Utils;
 
-public partial class DocumentDimensionExtractor : IDocumentDimensionExtractor
+public static partial class DocumentDimensionExtractor
 {
     // Accepts plain numbers ("100", "12.5") and the "px" unit ("100px"). Other CSS units are rejected.
     [GeneratedRegex(@"^\s*(\d+(?:\.\d+)?)\s*(px)?\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex PixelDimensionPattern();
 
-    public (int? Width, int? Height) Extract(Stream stream, string mimeType)
+    public static (int? Width, int? Height) Extract(Stream stream, string mimeType)
     {
         try
         {

@@ -2,19 +2,20 @@ using Digital.Net.Core.Entities.Context;
 using Digital.Net.Core.Entities.Models.Documents;
 using Digital.Net.Core.Entities.Models.Users;
 using Digital.Net.Core.Services.Documents.Exceptions;
-using Digital.Net.Core.Services.Documents.Extensions;
+using Digital.Net.Core.Services.Documents.Utils;
 using Digital.Net.Lib.Configuration;
 using Digital.Net.Lib.Files;
 using Digital.Net.Lib.Messages;
 using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
+using DocumentDimensionExtractor = Digital.Net.Core.Services.Documents.Utils.DocumentDimensionExtractor;
+using SvgSanitizer = Digital.Net.Core.Services.Documents.Utils.SvgSanitizer;
 
 namespace Digital.Net.Core.Services.Documents;
 
 public class DocumentService(
     DigitalContext context,
-    IConfiguration configuration,
-    IDocumentDimensionExtractor dimensionExtractor
+    IConfiguration configuration
 ) : IDocumentService
 {
     public string GetDocumentPath(Document document) => Path.Combine(
@@ -96,7 +97,7 @@ public class DocumentService(
 
         result.Value = new Document(uploader, definition);
 
-        var (width, height) = dimensionExtractor.Extract(buffer, definition.MimeType);
+        var (width, height) = DocumentDimensionExtractor.Extract(buffer, definition.MimeType);
         result.Value.Width = width;
         result.Value.Height = height;
         buffer.Position = 0;

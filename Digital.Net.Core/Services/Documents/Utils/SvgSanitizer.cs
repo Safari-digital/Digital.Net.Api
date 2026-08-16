@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace Digital.Net.Core.Services.Documents.Extensions;
+namespace Digital.Net.Core.Services.Documents.Utils;
 
 public static partial class SvgSanitizer
 {
@@ -13,7 +13,7 @@ public static partial class SvgSanitizer
 
     private static readonly HashSet<string> DangerousAttributePrefixes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "on" // onclick, onload, onerror, onmouseover, etc.
+        "on" // onclick, onload, onerror, onmouseover...
     };
 
     private static readonly HashSet<string> DangerousAttributes = new(StringComparer.OrdinalIgnoreCase)

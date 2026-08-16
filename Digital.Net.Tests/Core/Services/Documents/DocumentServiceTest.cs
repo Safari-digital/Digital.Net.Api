@@ -18,8 +18,7 @@ public class DocumentServiceTest : DbServiceTest<DigitalContext>
     protected override Task OnInitializedAsync()
     {
         var configMock = new Mock<IConfiguration>();
-        var extractorMock = new Mock<IDocumentDimensionExtractor>();
-        _service = new DocumentService(Context, configMock.Object, extractorMock.Object);
+        _service = new DocumentService(Context, configMock.Object);
         return Task.CompletedTask;
     }
 
@@ -45,7 +44,7 @@ public class DocumentServiceTest : DbServiceTest<DigitalContext>
     public async Task SaveDocumentAsync_Should_Populate_Width_And_Height_For_Image()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"digital_test_{Guid.NewGuid():N}");
-        var service = BuildServiceWithRealPipeline(tempDir);
+        var service = BuildServiceWithStorage(tempDir);
 
         try
         {
@@ -75,7 +74,7 @@ public class DocumentServiceTest : DbServiceTest<DigitalContext>
     public async Task SaveDocumentAsync_Should_Leave_Width_And_Height_Null_For_Non_Image()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"digital_test_{Guid.NewGuid():N}");
-        var service = BuildServiceWithRealPipeline(tempDir);
+        var service = BuildServiceWithStorage(tempDir);
 
         try
         {
@@ -101,7 +100,7 @@ public class DocumentServiceTest : DbServiceTest<DigitalContext>
         }
     }
 
-    private DocumentService BuildServiceWithRealPipeline(string storagePath)
+    private DocumentService BuildServiceWithStorage(string storagePath)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -109,6 +108,6 @@ public class DocumentServiceTest : DbServiceTest<DigitalContext>
                 [CoreSettings.FileSystemPathKey] = storagePath
             })
             .Build();
-        return new DocumentService(Context, config, new DocumentDimensionExtractor());
+        return new DocumentService(Context, config);
     }
 }

@@ -1,7 +1,7 @@
 using Digital.Net.Lib.Random;
 using SixLabors.ImageSharp.Formats.Jpeg;
 
-namespace Digital.Net.Core.Services.Documents.Extensions;
+namespace Digital.Net.Core.Services.Documents.Utils;
 
 public static class FormFileHelper
 {
