@@ -33,7 +33,7 @@ public static partial class TemplateInterpolator
         SourceVariables.GetOrAdd(sourceType, BuildVariables);
 
     /// <summary>
-    ///     Hydrates a single template string against a source dictionary. Case-insensitive.
+    ///     Rewrite a single template string against a source dictionary. Case-insensitive.
     ///     Unknown tokens are left untouched, null source fields are replaced by an empty string.
     /// </summary>
     public static string? Interpolate(string? template, IReadOnlyDictionary<string, object> sources) =>
@@ -43,59 +43,58 @@ public static partial class TemplateInterpolator
 
     /// <summary>
     ///     Walks all <see cref="TemplateTargetAttribute" /> string properties of <paramref name="target" />
-    ///     and rewrites their values in place.
+    ///     and rewrites their values against a source dictionary. Case-insensitive.
+    ///     Unknown tokens are left untouched, null source fields are replaced by an empty string.
     /// </summary>
-    public static void HydrateInPlace<TTarget>(TTarget target, IReadOnlyDictionary<string, object> sources)
+    public static void Interpolate<TTarget>(TTarget target, IReadOnlyDictionary<string, object> sources)
         where TTarget : class
     {
         foreach (var property in GetTargetProperties(target.GetType()))
         {
             var current = (string?)property.GetValue(target);
             var hydrated = Interpolate(current, sources);
-            if (!ReferenceEquals(current, hydrated))
+            if (!string.Equals(current, hydrated, StringComparison.Ordinal))
                 property.SetValue(target, hydrated);
         }
     }
 
-    /// <summary>
-    ///     Walks the terms left to right and returns the first that holds a value. A term whose source or
-    ///     field is unknown is skipped, not fatal — but a chain naming no known field at all is left
-    ///     verbatim, so a typo stays visible on the page instead of silently rendering nothing.
-    /// </summary>
     private static string ResolveToken(Match match, IReadOnlyDictionary<string, object> sources)
     {
-        var namedAKnownField = false;
+        var hasResolved = false;
 
+        // Walks the terms left to right and returns the first that holds a value.
         foreach (var term in match.Groups[1].Value.Split(FallbackSeparator, StringSplitOptions.TrimEntries))
         {
             var separator = term.IndexOf('.');
-            // Lowercased like the field below: the alias names a type, and an editor writing
-            // {{ Article.title }} means the same source the autocomplete would have inserted.
-            if (!sources.TryGetValue(term[..separator].ToLowerInvariant(), out var sourceInstance))
+            var objectName = term[..separator].ToLowerInvariant();
+            if (!sources.TryGetValue(objectName, out var sourceInstance))
                 continue;
 
             var fields = GetSourceFields(sourceInstance.GetType());
-            if (!fields.TryGetValue(term[(separator + 1)..].ToLowerInvariant(), out var property))
+            var fieldName = term[(separator + 1)..].ToLowerInvariant();
+            if (!fields.TryGetValue(fieldName, out var property))
                 continue;
 
-            namedAKnownField = true;
+            hasResolved = true;
             var value = property.GetValue(sourceInstance)?.ToString();
             if (!string.IsNullOrWhiteSpace(value))
                 return value;
         }
 
-        return namedAKnownField ? string.Empty : match.Value;
+        return hasResolved ? string.Empty : match.Value;
     }
 
     private static IReadOnlyList<TemplateVariableDescriptor> BuildVariables(Type sourceType)
     {
         var sourceKey = sourceType.Name.ToLowerInvariant();
-        return sourceType.GetProperties()
+        return sourceType
+            .GetProperties()
             .Where(IsSourceString)
             .Select(p => new TemplateVariableDescriptor(
                 $"{{{{ {sourceKey}.{p.Name.ToLowerInvariant()} }}}}",
                 sourceType.Name,
-                p.Name))
+                p.Name
+            ))
             .ToList();
     }
 
@@ -107,8 +106,6 @@ public static partial class TemplateInterpolator
             .Where(IsSourceString)
             .ToDictionary(p => p.Name.ToLowerInvariant(), p => p);
 
-    // Keyed on the runtime type, so an EF proxy gets its own entry. Proxies inherit the attributes of
-    // the entity they derive from, so both entries resolve to the same set of properties.
     private static IReadOnlyList<PropertyInfo> GetTargetProperties(Type targetType) =>
         TargetProperties.GetOrAdd(targetType, t => t.GetProperties()
             .Where(p => p.CanWrite && IsTargetString(p))

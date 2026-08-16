@@ -216,16 +216,16 @@ public class TemplateInterpolatorTest : UnitTest
     }
 
     [Test]
-    public async Task HydrateInPlace_LeavesSourceOnlyPropertyUntouched()
+    public async Task Interpolate_LeavesSourceOnlyPropertyUntouched()
     {
         var sources = Sources(new TestSource { Title = "Foo", Description = "Bar" });
         var target = new TestTarget { SourceOnly = "{{ testsource.title }}" };
-        TemplateInterpolator.HydrateInPlace(target, sources);
+        TemplateInterpolator.Interpolate(target, sources);
         await Assert.That(target.SourceOnly).IsEqualTo("{{ testsource.title }}");
     }
 
     [Test]
-    public async Task HydrateInPlace_RewritesAllTargetStrings()
+    public async Task Interpolate_RewritesAllTargetStrings()
     {
         var sources = Sources(new TestSource { Title = "Foo", Description = "Bar" });
         var target = new TestTarget
@@ -236,7 +236,7 @@ public class TemplateInterpolatorTest : UnitTest
             IgnoredNonString = 7
         };
 
-        TemplateInterpolator.HydrateInPlace(target, sources);
+        TemplateInterpolator.Interpolate(target, sources);
 
         await Assert.That(target.Headline).IsEqualTo("Foo");
         await Assert.That(target.Body).IsEqualTo("[Bar]");
@@ -245,11 +245,11 @@ public class TemplateInterpolatorTest : UnitTest
     }
 
     [Test]
-    public async Task HydrateInPlace_LeavesNullPropertiesUntouched()
+    public async Task Interpolate_LeavesNullPropertiesUntouched()
     {
         var sources = Sources(new TestSource { Title = "Foo", Description = "Bar" });
         var target = new TestTarget { Headline = null, Body = null };
-        TemplateInterpolator.HydrateInPlace(target, sources);
+        TemplateInterpolator.Interpolate(target, sources);
         await Assert.That(target.Headline).IsNull();
         await Assert.That(target.Body).IsNull();
     }

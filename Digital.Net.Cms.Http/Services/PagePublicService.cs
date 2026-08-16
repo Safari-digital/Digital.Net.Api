@@ -84,7 +84,7 @@ public class PagePublicService(
                 {
                     var sheet = ps.Child;
                     if (sources is not null)
-                        TemplateInterpolator.HydrateInPlace(sheet, sources);
+                        TemplateInterpolator.Interpolate(sheet, sources);
 
                     return new PageSheetResourceDto
                     {
@@ -121,9 +121,9 @@ public class PagePublicService(
 
             if (sources is not null)
             {
-                TemplateInterpolator.HydrateInPlace(page, sources);
+                TemplateInterpolator.Interpolate(page, sources);
                 foreach (var entry in openGraph)
-                    TemplateInterpolator.HydrateInPlace(entry, sources);
+                    TemplateInterpolator.Interpolate(entry, sources);
             }
 
             result.Value = new PagePublicDto(page)
@@ -167,7 +167,7 @@ public class PagePublicService(
 
             var sheet = pageSheet.Child;
             if (sources is not null)
-                TemplateInterpolator.HydrateInPlace(sheet, sources);
+                TemplateInterpolator.Interpolate(sheet, sources);
 
             var contentType = sheet.Type switch
             {
