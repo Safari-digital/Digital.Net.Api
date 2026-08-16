@@ -96,7 +96,6 @@ public static class CoreHttpInjector
             .MapAuthenticationEndpoints()
             .MapUserEndpoints()
             .MapApiKeyEndpoints()
-            .MapConfigValueEndpoints()
             .MapValidationEndpoints()
             .MapEntityMutationEndpoints();
 

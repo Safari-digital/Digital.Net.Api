@@ -1,7 +1,6 @@
 using Digital.Net.Core.Entities.Models.ApiKeys;
 using Digital.Net.Core.Entities.Models.Auth;
 using Digital.Net.Core.Entities.Models.Avatars;
-using Digital.Net.Core.Entities.Models.ConfigValues;
 using Digital.Net.Core.Entities.Models.Documents;
 using Digital.Net.Core.Entities.Models.Sessions;
 using Digital.Net.Core.Entities.Models.Users;
@@ -22,7 +21,6 @@ public class DigitalContext(DbContextOptions<DigitalContext> options) : DbContex
     public DbSet<ApiKey> ApiKeys { get; init; }
     public DbSet<AuthEvent> AuthEvents { get; init; }
     public DbSet<Avatar> Avatars { get; init; }
-    public DbSet<ConfigValue> ConfigValues { get; init; }
     public DbSet<Document> Documents { get; init; }
     public DbSet<Session> Sessions { get; init; }
     public DbSet<User> Users { get; init; }
@@ -36,6 +34,5 @@ public class DigitalContext(DbContextOptions<DigitalContext> options) : DbContex
         builder
             .HasDefaultSchema(Schema)
             .BuildUser()
-            .BuildConfigValue()
             .ConfigurePivots();
 }
