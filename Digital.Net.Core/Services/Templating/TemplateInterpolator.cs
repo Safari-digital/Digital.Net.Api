@@ -6,41 +6,35 @@ using Digital.Net.Lib.Entities.Models;
 
 namespace Digital.Net.Core.Services.Templating;
 
-/// <summary>
-///     Hydrates string templates of the form <c>{{ source.field }}</c>. Fields marked with
-///     <see cref="TemplateSourceAttribute" /> feed the tokens; fields marked with
-///     <see cref="TemplateTargetAttribute" /> hold the templates being rewritten.
-/// </summary>
 public static partial class TemplateInterpolator
 {
-    /// <summary>
-    ///     A token is a chain of one or more <c>source.field</c> terms separated by <c>??</c>. The capture
-    ///     holds the whole chain; <see cref="ResolveToken" /> walks its terms.
-    /// </summary>
+    // A token is a chain of one or more "source.field" terms separated by "??". The capture holds the whole chain.
     [GeneratedRegex(
         @"\{\{\s*([a-zA-Z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*(?:\s*\?\?\s*[a-zA-Z][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}"
     )]
     private static partial Regex TokenRegex();
 
-    /// <summary>Separates the terms of a fallback chain, e.g. <c>{{ article.metatitle ?? article.title }}</c>.</summary>
-    public const string FallbackSeparator = "??";
+    private const string FallbackSeparator = "??";
 
     private static readonly ConcurrentDictionary<Type, IReadOnlyList<TemplateVariableDescriptor>> SourceVariables = new();
     private static readonly ConcurrentDictionary<Type, IReadOnlyDictionary<string, PropertyInfo>> SourceFields = new();
     private static readonly ConcurrentDictionary<Type, IReadOnlyList<PropertyInfo>> TargetProperties = new();
 
-    /// <summary>Lists tokens exposed by a source entity type.</summary>
+    /// <summary>
+    ///     Lists tokens exposed by a source entity type.
+    /// </summary>
     public static IReadOnlyList<TemplateVariableDescriptor> GetVariables<TSource>() where TSource : Entity =>
         GetVariables(typeof(TSource));
 
-    /// <summary>Lists tokens exposed by a source entity type.</summary>
+    /// <summary>
+    ///     Lists tokens exposed by a source entity type.
+    /// </summary>
     public static IReadOnlyList<TemplateVariableDescriptor> GetVariables(Type sourceType) =>
         SourceVariables.GetOrAdd(sourceType, BuildVariables);
 
     /// <summary>
-    ///     Hydrates a single template string against a sources dictionary.
-    ///     Keys of <paramref name="sources" /> must be the lowercased source aliases (e.g. <c>"article"</c>).
-    ///     Unknown tokens are left untouched; null source fields are replaced by an empty string.
+    ///     Hydrates a single template string against a source dictionary. Case-insensitive.
+    ///     Unknown tokens are left untouched, null source fields are replaced by an empty string.
     /// </summary>
     public static string? Interpolate(string? template, IReadOnlyDictionary<string, object> sources) =>
         string.IsNullOrEmpty(template)

@@ -1,6 +1,6 @@
+using Digital.Net.Core.Services.Templating;
 using Digital.Net.Lib.Entities.Attributes;
 using Digital.Net.Lib.Entities.Models;
-using Digital.Net.Core.Services.Templating;
 
 namespace Digital.Net.Tests.Core.Services.Templating;
 
@@ -8,23 +8,34 @@ public class TemplateInterpolatorTest : UnitTest
 {
     private class TestSource : Entity
     {
-        [TemplateSource] public string? Title { get; set; }
-        [TemplateSource] public string? Description { get; set; }
+        [TemplateSource]
+        public string? Title { get; set; }
+
+        [TemplateSource]
+        public string? Description { get; set; }
+
+        [TemplateSource]
+        public string? PascalCaseKey { get; set; }
         public string? Hidden { get; set; }
 
-        // Carries the opposite role: must never be exposed as a variable.
-        [TemplateTarget] public string? TargetOnly { get; set; }
+        [TemplateTarget]
+        public string? TargetOnly { get; set; }
     }
 
     private class TestTarget
     {
-        [TemplateTarget] public string? Headline { get; set; }
-        [TemplateTarget] public string? Body { get; set; }
-        public string? Untouched { get; set; }
-        [TemplateTarget] public int IgnoredNonString { get; set; }
+        [TemplateTarget]
+        public string? Headline { get; set; }
 
-        // Carries the opposite role: must never be hydrated.
-        [TemplateSource] public string? SourceOnly { get; set; }
+        [TemplateTarget]
+        public string? Body { get; set; }
+        public string? Untouched { get; set; }
+
+        [TemplateTarget]
+        public int IgnoredNonString { get; set; }
+
+        [TemplateSource]
+        public string? SourceOnly { get; set; }
     }
 
     private static IReadOnlyDictionary<string, object> Sources(TestSource source) =>
@@ -126,7 +137,10 @@ public class TemplateInterpolatorTest : UnitTest
     public async Task Interpolate_Fallback_SkipsNullAndBlankTerms(string? empty)
     {
         var sources = Sources(new TestSource { Title = empty, Description = "World" });
-        var result = TemplateInterpolator.Interpolate("{{ testsource.title ?? testsource.description }}", sources);
+        var result = TemplateInterpolator.Interpolate(
+            "{{ testsource.title ?? testsource.description }}",
+            sources
+        );
         await Assert.That(result).IsEqualTo("World");
     }
 
@@ -135,7 +149,9 @@ public class TemplateInterpolatorTest : UnitTest
     {
         var sources = Sources(new TestSource { Title = null, Description = null, Hidden = "Z" });
         var result = TemplateInterpolator.Interpolate(
-            "{{ testsource.title ?? testsource.description ?? testsource.title }}", sources);
+            "{{ testsource.title ?? testsource.description ?? testsource.title }}",
+            sources
+        );
         await Assert.That(result).IsEqualTo(string.Empty);
     }
 
@@ -143,9 +159,10 @@ public class TemplateInterpolatorTest : UnitTest
     public async Task Interpolate_Fallback_SkipsUnknownTerms_AndKeepsGoing()
     {
         var sources = Sources(new TestSource { Title = "Hello", Description = "World" });
-        // testsource.hidden is not a source field, unknown.field has no source at all.
         var result = TemplateInterpolator.Interpolate(
-            "{{ unknown.field ?? testsource.hidden ?? testsource.description }}", sources);
+            "{{ unknown.field ?? testsource.hidden ?? testsource.description }}",
+            sources
+        );
         await Assert.That(result).IsEqualTo("World");
     }
 
@@ -158,19 +175,15 @@ public class TemplateInterpolatorTest : UnitTest
         await Assert.That(result).IsEqualTo(template);
     }
 
-    /// <summary>
-    ///     The alias is matched case-insensitively, like the field. The back-office validator lowercases
-    ///     before deciding a term is known, so a stricter engine would accept a token there and emit it
-    ///     verbatim into the live page title.
-    /// </summary>
     [Test]
-    public async Task Interpolate_MatchesTheSourceAlias_WhateverItsCase()
+    [Arguments("{{ testsource.tItle }} {{testsOUrce.DESCRIPTION}}{{testsource.pascalcasekey}}")]
+    [Arguments("{{ testsource.title }} {{TESTSOURCe.dESCRIPTION}}{{testsOurce.pascalcasekey}}")]
+    [Arguments("{{ testsource.Title }} {{TestSource.DESCRIPTION}}{{testsource.pascalcasekey}}")]
+    public async Task Interpolate_MatchesTheKeyAndSourceAliases_WhateverItsCase(string value)
     {
-        var sources = Sources(new TestSource { Title = "Hello", Description = "World" });
-        await Assert.That(TemplateInterpolator.Interpolate("{{ TestSource.title }}", sources)).IsEqualTo("Hello");
-        await Assert.That(TemplateInterpolator.Interpolate("{{ TESTSOURCE.title }}", sources)).IsEqualTo("Hello");
-        await Assert.That(TemplateInterpolator.Interpolate("{{ TestSource.title ?? testsource.description }}", sources))
-            .IsEqualTo("Hello");
+        var sources = Sources(new TestSource { Title = "Hello", Description = "World", PascalCaseKey = "!" });
+        const string expected = "Hello World!";
+        await Assert.That(TemplateInterpolator.Interpolate(value, sources)).IsEqualTo(expected);
     }
 
     [Test]
