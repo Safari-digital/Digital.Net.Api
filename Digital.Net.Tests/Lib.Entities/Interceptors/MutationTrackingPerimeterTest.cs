@@ -5,7 +5,6 @@ using Digital.Net.Cms.Models.Pages;
 using Digital.Net.Core.Entities.Models.ApiKeys;
 using Digital.Net.Core.Entities.Models.Auth;
 using Digital.Net.Core.Entities.Models.Avatars;
-using Digital.Net.Core.Entities.Models.ConfigValues;
 using Digital.Net.Core.Entities.Models.Documents;
 using Digital.Net.Core.Entities.Models.Sessions;
 using Digital.Net.Core.Entities.Models.Users;
@@ -19,7 +18,6 @@ public class MutationTrackingPerimeterTest
 {
     [Test]
     [Arguments(typeof(User))]
-    [Arguments(typeof(ConfigValue))]
     [Arguments(typeof(ApiKey))]
     [Arguments(typeof(Document))]
     [Arguments(typeof(Page))]

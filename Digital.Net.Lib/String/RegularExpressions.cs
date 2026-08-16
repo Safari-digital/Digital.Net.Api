@@ -42,12 +42,6 @@ public static partial class RegularExpressions
     public const string MediaLabelPattern = @"^[a-z0-9-]+$";
     public static Regex MediaLabel => MediaLabelRegex();
 
-    [GeneratedRegex(ConfigValueNamePattern)]
-    private static partial Regex ConfigValueNameRegex();
-
-    public const string ConfigValueNamePattern = @"^[a-z0-9:._-]{1,128}$";
-    public static Regex ConfigValueName => ConfigValueNameRegex();
-
     [GeneratedRegex("(?<!^)([A-Z])")]
     public static partial Regex PascalCase();
 
