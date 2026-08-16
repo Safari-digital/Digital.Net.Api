@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Attributes;
 
 namespace Digital.Net.Lib.Entities.Models;

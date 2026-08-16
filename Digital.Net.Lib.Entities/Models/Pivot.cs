@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using Digital.Net.Lib.Abstractions;
 
 namespace Digital.Net.Lib.Entities.Models;
 

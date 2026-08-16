@@ -3,11 +3,10 @@ using Digital.Net.Cms.Http.Dto;
 using Digital.Net.Cms.Http.Exceptions;
 using Digital.Net.Cms.Models;
 using Digital.Net.Cms.Models.Pages;
-using Digital.Net.Cms.Templating;
-using Digital.Net.Lib.Entities.Models;
-using Digital.Net.Core.Services.Templating;
+using Digital.Net.Lib.Entities.Templating;
 using Digital.Net.Lib.Exceptions.types;
 using Digital.Net.Lib.Messages;
+using Digital.Net.Lib.Templating;
 using Microsoft.EntityFrameworkCore;
 
 namespace Digital.Net.Cms.Http.Services;
@@ -15,7 +14,7 @@ namespace Digital.Net.Cms.Http.Services;
 public class PagePublicService(
     CmsContext context,
     PageTemplateResolver templateResolver,
-    IEnumerable<ITemplateSourceResolver> sourceResolvers
+    TemplatingService templatingService
 )
 {
     public async Task<Result<List<PageSheetInfoDto>>> GetPageSheetInfos(Guid id)
@@ -215,9 +214,10 @@ public class PagePublicService(
         var template = await templateResolver.ResolveAsync(payload.Path, ct);
 
         // Sources hang off whichever page declares the pattern: the dedicated page itself, or the
-        // template it inherits from when the dedicated page is a static child.
-        var owners = template is null ? new[] { page.Id } : [page.Id, template.Id];
-        var source = await ResolveSourceAsync(owners, ct);
+        // template it inherits from when the dedicated page is a static child. The dedicated page wins,
+        // so a page carrying its own source is never fed by the one its template offers.
+        var source = await templatingService.ResolveSourceAsync(page.Id, ct)
+                     ?? (template is null ? null : await templatingService.ResolveSourceAsync(template.Id, ct));
 
         IReadOnlyDictionary<string, object>? sources = source is null
             ? null
@@ -270,23 +270,4 @@ public class PagePublicService(
             .OrderBy(po => po.Order)
             .Select(po => po.Child)
             .ToListAsync(ct);
-
-    /// <summary>
-    ///     Queries the declared sources until one answers for the owning pages. As many round-trips as
-    ///     declared sources, which is without stake at this scale.
-    /// </summary>
-    private async Task<Entity?> ResolveSourceAsync(
-        IReadOnlyList<Guid> owners,
-        CancellationToken ct = default
-    )
-    {
-        foreach (var resolver in sourceResolvers)
-        {
-            var source = await resolver.ResolveAsync(owners, ct);
-            if (source is not null)
-                return source;
-        }
-
-        return null;
-    }
 }

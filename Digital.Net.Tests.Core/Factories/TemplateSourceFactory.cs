@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Digital.Net.Cms.Context;
-using Digital.Net.Cms.Templating;
+using Digital.Net.Lib.Entities.Templating;
 
 namespace Digital.Net.Tests.Core.Factories;
 

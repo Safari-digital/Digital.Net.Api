@@ -1,4 +1,4 @@
-namespace Digital.Net.Lib.Entities.Models;
+namespace Digital.Net.Lib.Abstractions;
 
 /// <summary>
 ///     Represents any DB <see cref="Entity" /> used in Digital.Net projects.

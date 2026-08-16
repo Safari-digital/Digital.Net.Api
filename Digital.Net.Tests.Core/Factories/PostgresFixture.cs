@@ -32,7 +32,8 @@ public class PostgresFixture : IAsyncInitializer, IAsyncDisposable
         return $"digitalnet-test-pg-{slug}";
     }
 
-    private static readonly string[] ManagedSchemas = ["digital_net", "digital_net_cms", "crud_test", "public"];
+    private static readonly string[] ManagedSchemas =
+        ["digital_net", "digital_net_cms", "crud_test", "templating_test", "public"];
 
     private readonly PostgreSqlContainer _container;
     private readonly ConcurrentDictionary<Type, Lazy<Task>> _ensuredContexts = new();

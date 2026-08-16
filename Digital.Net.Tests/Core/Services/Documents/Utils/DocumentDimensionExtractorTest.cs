@@ -9,7 +9,7 @@ using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace Digital.Net.Tests.Core.Services.Documents;
+namespace Digital.Net.Tests.Core.Services.Documents.Utils;
 
 public class DocumentDimensionExtractorTest : UnitTest
 {

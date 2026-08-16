@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Digital.Net.Lib.Entities.Attributes;
-using Digital.Net.Lib.Entities.Models;
+using Digital.Net.Lib.Templating.Attributes;
+using Digital.Net.Lib.Templating.Models;
 
-namespace Digital.Net.Core.Services.Templating;
+namespace Digital.Net.Lib.Templating;
 
 public static partial class TemplateInterpolator
 {
@@ -23,7 +23,7 @@ public static partial class TemplateInterpolator
     /// <summary>
     ///     Lists tokens exposed by a source entity type.
     /// </summary>
-    public static IReadOnlyList<TemplateVariableDescriptor> GetVariables<TSource>() where TSource : Entity =>
+    public static IReadOnlyList<TemplateVariableDescriptor> GetVariables<TSource>() where TSource : class =>
         GetVariables(typeof(TSource));
 
     /// <summary>
@@ -110,7 +110,7 @@ public static partial class TemplateInterpolator
         TargetProperties.GetOrAdd(targetType, t => t.GetProperties()
             .Where(p => p.CanWrite && IsTargetString(p))
             .ToList());
-
+    
     private static bool IsSourceString(PropertyInfo property) =>
         property.PropertyType == typeof(string)
         && property.GetCustomAttribute<TemplateSourceAttribute>() is not null;

@@ -4,9 +4,12 @@ using Digital.Net.Cms.Http.Exceptions;
 using Digital.Net.Cms.Http.Services;
 using Digital.Net.Cms.Models;
 using Digital.Net.Cms.Models.Pages;
+using Digital.Net.Lib.Entities.Templating;
+using Digital.Net.Lib.Templating.Models;
 using Digital.Net.Tests.Core;
 using Digital.Net.Tests.Core.Factories;
 using Digital.Net.Tests.Core.Factories.Data;
+using Digital.Net.Tests.Lib.Entities.Templating;
 using TUnit.Core.Interfaces;
 
 namespace Digital.Net.Tests.Cms.Http.Services.Pages;
@@ -17,17 +20,39 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
     public required DatabaseFixture DbFixture { get; init; }
     
     private CmsContext _context = null!;
+    private TemplatingTestContext _sourceContext = null!;
     private PagePublicService _service = null!;
 
     public async Task InitializeAsync()
     {
         await DbFixture.EnsureCreatedAsync<CmsContext>();
+        await DbFixture.EnsureCreatedAsync<TemplatingTestContext>();
         _context = DbFixture.CreateContext<CmsContext>();
+        _sourceContext = DbFixture.CreateContext<TemplatingTestContext>();
         _service = new PagePublicService(
             _context,
             new PageTemplateResolver(_context),
-            _context.BuildTemplateSourceResolvers()
+            new TemplatingService(_context.BuildTemplateSourceResolvers())
         );
+    }
+
+    private PagePublicService BuildServiceWithSources() =>
+        new(
+            _context,
+            new PageTemplateResolver(_context),
+            new TemplatingService([
+                new TemplateSourceResolver<TemplatingTestContext, TemplatingTestSource>(
+                    _sourceContext,
+                    new TemplateSourceDescriptor(
+                        typeof(TemplatingTestSource),
+                        nameof(TemplatingTestSource.HostId)))
+            ])
+        );
+
+    private void SeedSource(Guid hostId, string title)
+    {
+        _sourceContext.Sources.Add(new TemplatingTestSource { Title = title, HostId = hostId });
+        _sourceContext.SaveChanges();
     }
 
     private static PageBuildPayload Build(string path) => new() { Path = path };
@@ -577,4 +602,63 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
     }
 
+    [Test]
+    public async Task BuildPage_InterpolatesFromSourceHostedOnTheDedicatedPage()
+    {
+        var (_, dedicated) = SeedTemplateAndDedicatedPage(
+            dedicatedTitle: "{{ templatingtestsource.title }}");
+        SeedSource(dedicated.Id, "Own source");
+
+        var result = await BuildServiceWithSources().BuildPublicPage(Build(dedicated.Path));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Title).IsEqualTo("Own source");
+    }
+
+    /// <summary>
+    ///     A template can carry the source of every page it covers: the dedicated page has none of its
+    ///     own, so the token is fed by the source hosted on the template it inherits from.
+    /// </summary>
+    [Test]
+    public async Task BuildPage_FallsBackToSourceHostedOnTheTemplate()
+    {
+        var (template, dedicated) = SeedTemplateAndDedicatedPage(
+            dedicatedTitle: "{{ templatingtestsource.title }}");
+        SeedSource(template.Id, "Template source");
+
+        var result = await BuildServiceWithSources().BuildPublicPage(Build(dedicated.Path));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Title).IsEqualTo("Template source");
+    }
+
+    /// <summary>
+    ///     Both hosts carry a source: precedence must be the dedicated page, deterministically. Resolving
+    ///     both ids in a single "IN" query left the winner to whatever row Postgres returned first.
+    /// </summary>
+    [Test]
+    public async Task BuildPage_PrefersTheDedicatedPageSource_OverTheTemplateOne()
+    {
+        var (template, dedicated) = SeedTemplateAndDedicatedPage(
+            dedicatedTitle: "{{ templatingtestsource.title }}");
+        SeedSource(template.Id, "Template source");
+        SeedSource(dedicated.Id, "Own source");
+
+        var result = await BuildServiceWithSources().BuildPublicPage(Build(dedicated.Path));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Title).IsEqualTo("Own source");
+    }
+
+    [Test]
+    public async Task BuildPage_LeavesTokensVerbatim_WhenNoSourceIsHosted()
+    {
+        var (_, dedicated) = SeedTemplateAndDedicatedPage(
+            dedicatedTitle: "{{ templatingtestsource.title }}");
+
+        var result = await BuildServiceWithSources().BuildPublicPage(Build(dedicated.Path));
+
+        await Assert.That(result.HasError).IsFalse();
+        await Assert.That(result.Value!.Title).IsEqualTo("{{ templatingtestsource.title }}");
+    }
 }

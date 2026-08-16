@@ -9,14 +9,12 @@ using Digital.Net.Core.Entities.Models.ConfigValues;
 using Digital.Net.Core.Entities.Models.Documents;
 using Digital.Net.Core.Entities.Models.Sessions;
 using Digital.Net.Core.Entities.Models.Users;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Models;
 using Digital.Net.Lib.Entities.Mutations;
 
 namespace Digital.Net.Tests.Lib.Entities.Interceptors;
 
-/// <summary>
-///     Documents & guards the mutation-tracking perimeter (US-MUT-06). Pure reflection — no DB.
-/// </summary>
 public class MutationTrackingPerimeterTest
 {
     [Test]

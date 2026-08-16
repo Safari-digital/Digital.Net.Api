@@ -1,6 +1,6 @@
 using Digital.Net.Core.Http.Services.Pagination;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Attributes;
-using Digital.Net.Lib.Entities.Models;
 
 namespace Digital.Net.Tests.Core.Http.Services.Pagination;
 

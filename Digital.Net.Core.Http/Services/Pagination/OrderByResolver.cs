@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Attributes;
-using Digital.Net.Lib.Entities.Models;
 
 namespace Digital.Net.Core.Http.Services.Pagination;
 

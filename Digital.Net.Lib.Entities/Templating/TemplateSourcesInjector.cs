@@ -1,17 +1,16 @@
-using Digital.Net.Lib.Entities.Attributes;
+using Digital.Net.Lib.Templating.Attributes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Digital.Net.Cms.Templating;
+namespace Digital.Net.Lib.Entities.Templating;
 
 public static class TemplateSourcesInjector
 {
     /// <summary>
     ///     Declares the interpolation sources of a context: scans its assembly, keeps the entities whose
     ///     navigation carries <see cref="TemplateHostAttribute" />, and registers a closed instance of the
-    ///     generic resolver for each. The library never learns the name of the context — the caller
-    ///     supplies its type and data is reached through the typed <see cref="DbSet{TEntity}" />.
+    ///     generic resolver for each.
     /// </summary>
     public static IHostApplicationBuilder AddTemplateSources<TContext>(this IHostApplicationBuilder builder)
         where TContext : DbContext
@@ -28,6 +27,7 @@ public static class TemplateSourcesInjector
             );
         }
 
+        builder.Services.AddScoped<TemplatingService>();
         return builder;
     }
 }

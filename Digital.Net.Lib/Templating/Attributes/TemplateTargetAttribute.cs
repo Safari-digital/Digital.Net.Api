@@ -1,4 +1,4 @@
-namespace Digital.Net.Lib.Entities.Attributes;
+namespace Digital.Net.Lib.Templating.Attributes;
 
 /// <summary>
 ///     Marks a string property as an interpolation target: placeholders like {{ entity.field }} held in its

@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Digital.Net.Lib.Entities.Attributes;
 using Digital.Net.Lib.Entities.Exceptions;
 using Digital.Net.Lib.Entities.Models;
+using Digital.Net.Lib.Templating.Attributes;
 using Digital.Net.Tests.Core;
 
 namespace Digital.Net.Tests.Lib.Entities.Models;

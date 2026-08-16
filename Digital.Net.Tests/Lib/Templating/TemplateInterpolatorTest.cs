@@ -1,12 +1,12 @@
-using Digital.Net.Core.Services.Templating;
-using Digital.Net.Lib.Entities.Attributes;
-using Digital.Net.Lib.Entities.Models;
+using Digital.Net.Lib.Templating;
+using Digital.Net.Lib.Templating.Attributes;
+using Digital.Net.Tests.Core;
 
-namespace Digital.Net.Tests.Core.Services.Templating;
+namespace Digital.Net.Tests.Lib.Templating;
 
 public class TemplateInterpolatorTest : UnitTest
 {
-    private class TestSource : Entity
+    private class TestSource
     {
         [TemplateSource]
         public string? Title { get; set; }
@@ -200,9 +200,12 @@ public class TemplateInterpolatorTest : UnitTest
     public async Task GetVariables_ReturnsOnlySourceProperties()
     {
         var variables = TemplateInterpolator.GetVariables<TestSource>();
-        await Assert.That(variables.Count).IsEqualTo(2);
+        await Assert.That(variables.Count).IsEqualTo(3);
         await Assert.That(variables.Any(v => v.Field == "Title" && v.Token == "{{ testsource.title }}")).IsTrue();
         await Assert.That(variables.Any(v => v.Field == "Description")).IsTrue();
+        // The field keeps its declared casing, the token is the lowercased form the editor pastes.
+        await Assert.That(variables.Any(v =>
+            v.Field == "PascalCaseKey" && v.Token == "{{ testsource.pascalcasekey }}")).IsTrue();
         await Assert.That(variables.Any(v => v.Field == "Hidden")).IsFalse();
         await Assert.That(variables.Any(v => v.Field == "TargetOnly")).IsFalse();
     }

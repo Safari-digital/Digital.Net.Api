@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Exceptions;
 using Digital.Net.Lib.Entities.Models;
 using Digital.Net.Lib.String;

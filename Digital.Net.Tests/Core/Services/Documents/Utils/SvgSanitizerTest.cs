@@ -2,7 +2,7 @@ using System.Text;
 using System.Xml.Linq;
 using Digital.Net.Core.Services.Documents.Utils;
 
-namespace Digital.Net.Tests.Core.Services.Documents;
+namespace Digital.Net.Tests.Core.Services.Documents.Utils;
 
 public class SvgSanitizerTest : UnitTest
 {

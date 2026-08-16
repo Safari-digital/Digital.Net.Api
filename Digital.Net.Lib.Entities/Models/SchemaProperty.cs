@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Attributes;
 using Digital.Net.Lib.Entities.Exceptions;
 using Digital.Net.Lib.Entities.Pivots;

@@ -27,6 +27,7 @@
     <ItemGroup>
         <Folder Include="Extensions\"/>
         <Folder Include="Origin\"/>
+        <Folder Include="Templating\"/>
     </ItemGroup>
 
 </Project>

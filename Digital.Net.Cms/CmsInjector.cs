@@ -1,9 +1,9 @@
 using Digital.Net.Cms.Context;
 using Digital.Net.Cms.Services;
-using Digital.Net.Cms.Templating;
 using Digital.Net.Core;
 using Digital.Net.Lib.Configuration;
 using Digital.Net.Lib.Entities.Bootstrap;
+using Digital.Net.Lib.Entities.Templating;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 

@@ -1,4 +1,5 @@
 using Digital.Net.Core.Http.Services.Crud;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Attributes;
 using Digital.Net.Lib.Entities.Exceptions;
 using Digital.Net.Lib.Entities.Models;

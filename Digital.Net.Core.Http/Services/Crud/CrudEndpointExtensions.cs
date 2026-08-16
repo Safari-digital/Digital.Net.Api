@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Digital.Net.Lib.Abstractions;
 using Digital.Net.Lib.Entities.Exceptions;
 using Digital.Net.Lib.Entities.Models;
 using Digital.Net.Lib.Entities.Projection;
