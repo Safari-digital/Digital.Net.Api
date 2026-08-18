@@ -204,9 +204,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         await Assert.That(result.Value!.OpenGraph[1].Content).IsEqualTo("Second desc");
     }
 
-    private static PageSheetBuildPayload BuildSheet(Guid sheetId, string path) =>
-        new() { SheetId = sheetId, Path = path };
-
     [Test]
     public async Task BuildPageSheets_ReturnsInheritedThenOwn_WithoutDuplicates()
     {
@@ -276,92 +273,6 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         _context.PageSheets.Add(new PageSheet { ParentId = page.Id, ChildId = sheet.Id, Order = 0 });
         _context.SaveChanges();
         return (page, sheet);
-    }
-
-    [Test]
-    [Arguments("css", "text/css")]
-    [Arguments("js", "application/javascript")]
-    [Arguments("html", "text/html")]
-    public async Task BuildPageSheet_ReturnsCorrectContentType(string type, string expectedContentType)
-    {
-        var (page, sheet) = SeedPageWithSheet(type, "raw");
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheet.Id, page.Path));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value.contentType).IsEqualTo(expectedContentType);
-        await Assert.That(result.Value.content).IsEqualTo("raw");
-    }
-
-    [Test]
-    public async Task BuildPageSheet_NotTemplated_DoesNotAlterContent()
-    {
-        var (page, sheet) = SeedPageWithSheet(
-            "html",
-            "<p>{{ article.title }}</p>"
-        );
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheet.Id, page.Path));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value.content).IsEqualTo("<p>{{ article.title }}</p>");
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenSheetIdUnknown()
-    {
-        var (page, _) = SeedPageWithSheet();
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(Guid.NewGuid(), page.Path));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenSheetNotPublished()
-    {
-        var (page, sheet) = SeedPageWithSheet(sheetPublished: false);
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheet.Id, page.Path));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenSheetNotLinkedToPage()
-    {
-        // Page A + Page B + Sheet liée seulement à A. On demande la sheet sur le path de B.
-        var (_, sheetA) = SeedPageWithSheet();
-        var pageB = new Page
-        {
-            Path = $"/other-{TestId}-{Guid.NewGuid().ToString("N")[..6]}",
-            Published = true,
-            Indexed = true
-        };
-        _context.Pages.Add(pageB);
-        _context.SaveChanges();
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheetA.Id, pageB.Path));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenPageNotPublished()
-    {
-        var (page, sheet) = SeedPageWithSheet(pagePublished: false);
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheet.Id, page.Path));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenPathEmpty()
-    {
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(Guid.NewGuid(), string.Empty));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
     }
 
     private (Page template, Page dedicated) SeedTemplateAndDedicatedPage(
@@ -513,95 +424,7 @@ public class PagePublicServiceTest : UnitTest, IAsyncInitializer
         await Assert.That(og[2].Property).IsEqualTo("og:title");
         await Assert.That(og[2].Content).IsEqualTo("Own title");
     }
-
-    [Test]
-    public async Task GetPageSheetInfos_ListsTemplateSheetsFirst()
-    {
-        var (template, dedicated) = SeedTemplateAndDedicatedPage();
-        var inherited = _context.BuildTestSheet(name: "inherited", published: true);
-        var own = _context.BuildTestSheet(name: "own", published: true);
-        _context.BuildTestPageSheet(template.Id, inherited.Id);
-        _context.BuildTestPageSheet(dedicated.Id, own.Id);
-
-        var result = await _service.GetPageSheetInfos(dedicated.Id);
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Count).IsEqualTo(2);
-        await Assert.That(result.Value![0].Name).IsEqualTo("inherited");
-        await Assert.That(result.Value![1].Name).IsEqualTo("own");
-    }
-
-    [Test]
-    public async Task GetPageSheetInfos_ExcludesUnpublishedTemplateSheets()
-    {
-        var (template, dedicated) = SeedTemplateAndDedicatedPage();
-        var unpublished = _context.BuildTestSheet(name: "unpublished", published: false);
-        _context.BuildTestPageSheet(template.Id, unpublished.Id);
-
-        var result = await _service.GetPageSheetInfos(dedicated.Id);
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!).IsEmpty();
-    }
-
-    [Test]
-    public async Task GetPageSheetInfos_DedupsSheetsSharedWithTemplate()
-    {
-        var (template, dedicated) = SeedTemplateAndDedicatedPage();
-        var inherited = _context.BuildTestSheet(name: "inherited", published: true);
-        var shared = _context.BuildTestSheet(name: "shared", published: true);
-        _context.BuildTestPageSheet(template.Id, inherited.Id);
-        _context.BuildTestPageSheet(template.Id, shared.Id, 1);
-        _context.BuildTestPageSheet(dedicated.Id, shared.Id);
-
-        var result = await _service.GetPageSheetInfos(dedicated.Id);
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Count).IsEqualTo(2);
-        await Assert.That(result.Value![0].Name).IsEqualTo("inherited");
-        await Assert.That(result.Value![1].Name).IsEqualTo("shared");
-    }
-
-    [Test]
-    public async Task GetPageSheetInfos_DoesNotInherit_WhenPageIsTemplate()
-    {
-        var (template, _) = SeedTemplateAndDedicatedPage();
-        var own = _context.BuildTestSheet(name: "own", published: true);
-        _context.BuildTestPageSheet(template.Id, own.Id);
-
-        var result = await _service.GetPageSheetInfos(template.Id);
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value!.Count).IsEqualTo(1);
-        await Assert.That(result.Value![0].Name).IsEqualTo("own");
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ServesTemplateSheet_OnDedicatedPagePath()
-    {
-        var (template, dedicated) = SeedTemplateAndDedicatedPage();
-        var sheet = _context.BuildTestSheet(type: "css", content: "body { color: red; }", published: true);
-        _context.BuildTestPageSheet(template.Id, sheet.Id);
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheet.Id, dedicated.Path));
-
-        await Assert.That(result.HasError).IsFalse();
-        await Assert.That(result.Value.contentType).IsEqualTo("text/css");
-        await Assert.That(result.Value.content).IsEqualTo("body { color: red; }");
-    }
-
-    [Test]
-    public async Task BuildPageSheet_ReturnsInvalidPagePath_WhenTemplateSheetUnpublished()
-    {
-        var (template, dedicated) = SeedTemplateAndDedicatedPage();
-        var sheet = _context.BuildTestSheet(published: false);
-        _context.BuildTestPageSheet(template.Id, sheet.Id);
-
-        var result = await _service.BuildPublicPageSheetResource(BuildSheet(sheet.Id, dedicated.Path));
-
-        await Assert.That(result.HasErrorOfType<InvalidPagePathException>()).IsTrue();
-    }
-
+    
     [Test]
     public async Task BuildPage_InterpolatesFromSourceHostedOnTheDedicatedPage()
     {

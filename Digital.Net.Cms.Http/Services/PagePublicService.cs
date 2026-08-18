@@ -4,7 +4,6 @@ using Digital.Net.Cms.Http.Exceptions;
 using Digital.Net.Cms.Models;
 using Digital.Net.Cms.Models.Pages;
 using Digital.Net.Lib.Entities.Templating;
-using Digital.Net.Lib.Exceptions.types;
 using Digital.Net.Lib.Messages;
 using Digital.Net.Lib.Templating;
 using Microsoft.EntityFrameworkCore;
@@ -17,41 +16,6 @@ public class PagePublicService(
     TemplatingService templatingService
 )
 {
-    public async Task<Result<List<PageSheetInfoDto>>> GetPageSheetInfos(Guid id)
-    {
-        var result = new Result<List<PageSheetInfoDto>>();
-        try
-        {
-            var page = await context.Pages
-                           .AsNoTracking()
-                           .FirstOrDefaultAsync(p => p.Id == id)
-                       ?? throw new ResourceNotFoundException();
-
-            var own = await GetPublishedSheetInfosAsync(page.Id);
-            var template = await templateResolver.ResolveAsync(page.Path);
-            if (template is null)
-            {
-                result.Value = own;
-                return result;
-            }
-
-            var ownIds = own.Select(s => s.Id).ToHashSet();
-            var inherited = await GetPublishedSheetInfosAsync(template.Id);
-            result.Value = inherited.Where(s => !ownIds.Contains(s.Id)).Concat(own).ToList();
-        }
-        catch (Exception ex)
-        {
-            result.AddError(ex);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    ///     Builds every sheet of a page in one pass: inheritance applied, published only, ordered as the
-    ///     pivot declares, and hydrated from the same source as the page itself. A page whose source is
-    ///     unresolved renders its sheets un-hydrated rather than failing, exactly as its metas do.
-    /// </summary>
     public async Task<Result<List<PageSheetResourceDto>>> BuildPublicPageSheets(
         PageBuildPayload payload,
         CancellationToken ct = default
@@ -69,8 +33,8 @@ public class PagePublicService(
                 .Where(ps => pageIds.Contains(ps.ParentId) && ps.Child.Published)
                 .ToListAsync(ct);
 
-            // Inherited sheets load first, then the page's own — same order as GetPageSheetInfos. A sheet
-            // shared by both pages is kept once, on the dedicated page's side.
+            // Inherited sheets load first, then the page's own. A sheet shared by both pages is kept
+            // once, on the dedicated page's side.
             var ownIds = pageSheets.Where(ps => ps.ParentId == page.Id).Select(ps => ps.ChildId).ToHashSet();
             var ordered = pageSheets
                 .Where(ps => ps.ParentId != page.Id && !ownIds.Contains(ps.ChildId))
@@ -144,53 +108,6 @@ public class PagePublicService(
         return result;
     }
 
-    public async Task<Result<(string contentType, string content)>> BuildPublicPageSheetResource(
-        PageSheetBuildPayload payload,
-        CancellationToken ct = default
-    )
-    {
-        var result = new Result<(string contentType, string content)>();
-        try
-        {
-            var (page, template, sources) = await ResolvePageAndSourcesAsync(payload, ct);
-            var pageIds = template is null ? new[] { page.Id } : new[] { page.Id, template.Id };
-            var pageSheet = await context.PageSheets
-                .AsNoTracking()
-                .Include(ps => ps.Child)
-                .FirstOrDefaultAsync(
-                    ps => pageIds.Contains(ps.ParentId)
-                          && ps.ChildId == payload.SheetId
-                          && ps.Child.Published,
-                    ct
-                ) ?? throw new InvalidPagePathException();
-
-            var sheet = pageSheet.Child;
-            if (sources is not null)
-                TemplateInterpolator.Interpolate(sheet, sources);
-
-            var contentType = sheet.Type switch
-            {
-                "css" => "text/css",
-                "js" => "application/javascript",
-                "html" => "text/html",
-                _ => "text/plain"
-            };
-
-            result.Value = (contentType, sheet.Content);
-        }
-        catch (Exception ex)
-        {
-            result.AddError(ex);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    ///     Resolves the published page whose Path is exactly the requested one, or 404. When that page
-    ///     is covered by a template, the most specific one is returned alongside for merging — templates
-    ///     are inherited from, never served.
-    /// </summary>
     private async Task<(Page page, Page? template, IReadOnlyDictionary<string, object>? sources)>
         ResolvePageAndSourcesAsync(
             PageBuildPayload payload,
@@ -200,17 +117,12 @@ public class PagePublicService(
         if (string.IsNullOrWhiteSpace(payload.Path))
             throw new InvalidPagePathException();
 
-        var dedicated = await context.Pages
+        var page = await context.Pages
             .AsNoTracking()
-            .Where(PageVisibility.IsLive(DateTime.UtcNow))
+            .Where(PageExpressions.IsLive())
             .Where(p => p.Path == payload.Path)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(ct) ?? throw new InvalidPagePathException();
 
-        // A dynamic path is a pattern, not an address: a template is only ever an inheritance source,
-        // never a page in its own right. Serving it for a path it merely covers would answer 200 for
-        // any URL under the pattern — an unpublished article, or a slug that never existed — with its
-        // own tokens as content, since no source hosts on it. Nothing to serve means 404.
-        var page = dedicated ?? throw new InvalidPagePathException();
         var template = await templateResolver.ResolveAsync(payload.Path, ct);
 
         // Sources hang off whichever page declares the pattern: the dedicated page itself, or the
@@ -247,20 +159,6 @@ public class PagePublicService(
         if (string.IsNullOrWhiteSpace(page.Redirect))
             page.Redirect = template.Redirect;
     }
-
-    private Task<List<PageSheetInfoDto>> GetPublishedSheetInfosAsync(Guid pageId) =>
-        context.PageSheets
-            .AsNoTracking()
-            .Include(ps => ps.Child)
-            .Where(ps => ps.ParentId == pageId && ps.Child.Published == true)
-            .OrderBy(ps => ps.Order)
-            .Select(ps => new PageSheetInfoDto
-            {
-                Id = ps.ChildId,
-                Name = ps.Child.Name,
-                Type = ps.Child.Type
-            })
-            .ToListAsync();
 
     private Task<List<OpenGraphEntry>> GetOpenGraphEntriesAsync(Guid pageId, CancellationToken ct) =>
         context.PageOpenGraphs

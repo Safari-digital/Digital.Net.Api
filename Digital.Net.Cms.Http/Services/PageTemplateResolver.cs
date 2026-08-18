@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Digital.Net.Cms.Http.Services;
 
-public class PageTemplateResolver(CmsContext context)
+public class PageTemplateResolver(
+    CmsContext context
+)
 {
     /// <summary>
     ///     Resolves the published dynamic page whose pattern covers the given path. The most specific
